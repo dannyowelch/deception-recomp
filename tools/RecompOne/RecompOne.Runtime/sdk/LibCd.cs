@@ -224,6 +224,18 @@ public static class LibCd
         var buf = c.A1;
         _mode = (byte)c.A2;
         var lba = CurrentLba;
+        byte mm, ss, ff;
+        lock (_posGate)
+        {
+            mm = _pos[0];
+            ss = _pos[1];
+            ff = _pos[2];
+        }
+
+        // TEMP: sector count, destination (a1), and the drive position, once per call.
+        Console.WriteLine(
+            "TEMP CdRead sectors={0} a1=0x{1:X8} lba={2} pos={3:X2}:{4:X2}:{5:X2}",
+            sectors, buf, lba, mm, ss, ff);
 
         _xaActive = false;
         lock (_dataIrqQueue)

@@ -313,7 +313,7 @@ public static class BiosA
             case 0x07: c.V0 = c.A0 <= 2u ? 2u : 0u; break;
             case 0x08: c.V0 = 0xFFFFFFFFu; break;
             case 0x09:
-                Console.Write((char)(c.A0 & 0xFF));
+                GuestConsole.Write((char)(c.A0 & 0xFF));
                 c.V0 = c.A0;
                 break;
             case 0x0A: c.V0 = char.IsDigit((char)(c.A0 & 0xFF)) ? (c.A0 & 0xFFu) - '0' : 0xFFFFFFFFu; break;
@@ -506,16 +506,16 @@ public static class BiosA
             case 0x3A: Environment.Exit(1); break;
             case 0x3B: c.V0 = 0xFFFFFFFFu; break;
             case 0x3C:
-                Console.Write((char)(c.A0 & 0xFF));
+                GuestConsole.Write((char)(c.A0 & 0xFF));
                 c.V0 = c.A0;
                 break;
             case 0x3D: c.V0 = 0u; break;
             case 0x3E:
-                Console.Write(Bios.ReadString(m, c.A0));
+                GuestConsole.Write(Bios.ReadString(m, c.A0));
                 c.V0 = c.A0;
                 break;
             case 0x3F:
-                Console.Write(Bios.FormatString(m, c, Bios.ReadString(m, c.A0)));
+                GuestConsole.Write(Bios.FormatString(m, c, Bios.ReadString(m, c.A0)));
                 c.V0 = 0u;
                 break;
             case 0x40: throw new Exception("BIoS A(40h) SystemErrorUnresolvedException");

@@ -1,5 +1,6 @@
 using RecompOne.Runtime.Context;
 using RecompOne.Runtime.Events;
+using RecompOne.Runtime.Host;
 using RecompOne.Runtime.Memory;
 
 namespace RecompOne.Runtime.Bios;
@@ -490,17 +491,17 @@ public static class BiosB
             case 0x39: c.V0 = c.A0 <= 2u ? 2u : 0u; break;
             case 0x3A: c.V0 = 0xFFFFFFFFu; break;
             case 0x3B:
-                Console.Write((char)(c.A0 & 0xFF));
+                GuestConsole.Write((char)(c.A0 & 0xFF));
                 c.V0 = c.A0;
                 break;
             case 0x3C: c.V0 = 0xFFFFFFFFu; break;
             case 0x3D:
-                Console.Write((char)(c.A0 & 0xFF));
+                GuestConsole.Write((char)(c.A0 & 0xFF));
                 c.V0 = c.A0;
                 break;
             case 0x3E: c.V0 = 0u; break;
             case 0x3F:
-                Console.Write(Bios.ReadString(m, c.A0));
+                GuestConsole.Write(Bios.ReadString(m, c.A0));
                 c.V0 = c.A0;
                 break;
             case 0x40: c.V0 = 1u; break;
@@ -681,6 +682,11 @@ public static class BiosB
         target.Caller = from;
         _current = to;
 
+        // 0111. One PS1 thread runs at a time, and the GL context has to be
+        // current on that thread. Drop it before the other thread can draw,
+        // and take it back only once this one is running again.
+        HostWindow.ReleaseGl();
+
         if (!target.Live)
         {
             target.Live = true;
@@ -697,6 +703,7 @@ public static class BiosB
         self.Baton.Wait();
         if (Gone(from, self)) throw new ThreadGone();
 
+        HostWindow.AcquireGl();
         c.Restore(self.Regs);
         c.V0 = 1u;
     }
@@ -720,10 +727,12 @@ public static class BiosB
 
         try
         {
+            HostWindow.AcquireGl();
             RecompOne.Runtime.Dispatch.Dispatcher.Call(c, m, tcb.Pc);
         }
         catch (ThreadGone)
         {
+            HostWindow.ReleaseGl();
             return;
         }
         catch (Exception e)
@@ -731,13 +740,19 @@ public static class BiosB
             Console.Error.WriteLine($"[Runtime] thread {slot} stopped: {e}");
         }
 
-        if (Gone(slot, tcb)) return;
+        if (Gone(slot, tcb))
+        {
+            HostWindow.ReleaseGl();
+            return;
+        }
 
         var back = tcb.Caller;
         if (back < 0) back = 0;
         tcb.Live = false;
         tcb.Used = false;
         _current = back;
+        // Before the waiter wakes: it makes the context current the moment Wait returns.
+        HostWindow.ReleaseGl();
         _tcbs[back].Baton.Release();
     }
 

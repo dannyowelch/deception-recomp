@@ -114,6 +114,11 @@ Four files in the directory have no entry below:
   dropped an overlay fully contained in the new one. `END.EXE` is smaller than
   `GAME.EXE` at the same base, so GAME's functions past `0x8003A000` stayed
   mapped after the ending loaded. Any overlap is now an overwrite.
+  Since amended: a partial overlap keeps the earlier overlay resident and drops
+  only the functions inside the new image. `Rebuild` leaves those out while the
+  newer overlay is loaded. Same base, a new image that covers the old one, or
+  an old overlay with no function outside the new image, still removes the
+  whole overlay. That is the OPEN/GAME/END swap.
 
 - `0009-perspective-correct-textures.patch` — the GPU is handed polygons with no
   depth in them, so it can only interpolate U and V linearly and every texture
@@ -2048,6 +2053,16 @@ Four files in the directory have no entry below:
   every 2 s from five seconds into the message; after, `wide 125, vram fallback 0`
   for the whole wait. The map item itself not reached by the shell; **not looked
   at.** **No recompile.**
+- `0111-gl-context-follows-baton.patch` — a PS1 thread (`BiosB.ChangeTh` /
+  `RunTh`) runs on its own OS thread, and only one runs at a time, but the GLFW
+  context stayed current on the thread that created the window. A draw from a
+  `psx-th` thread threw `GlfwException: NoContext`. `HostWindow.ReleaseGl` /
+  `AcquireGl` move the context with the baton: released before the other thread
+  is started or woken, acquired again when `Wait` returns and at the start of
+  `RunTh`, and released again before the baton is handed back. `glfwPollEvents`,
+  input polling, and title and fullscreen changes stay on the creating thread
+  (its id is recorded in `Initialize`); drawing and the buffer swap do not.
+  Both context calls no-op in headless mode. **Not run.** **No recompile.**
 
 ## Package bumps
 

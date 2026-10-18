@@ -12,6 +12,10 @@ public static class Dispatcher
     private static readonly Dictionary<int, string> _lbaToName = [];
     private static readonly List<string> _active = [];
     private static readonly Dictionary<uint, Action<CpuContext, IMemory>> _funcMap = [];
+    // 0008. Functions of a still-resident overlay hidden by a newer one.
+    // Victim name, then address, then every overlay that still covers it.
+    // Rebuild skips them, and drops a cover once that overlay is gone.
+    private static readonly Dictionary<string, Dictionary<uint, HashSet<string>>> _partial = new(StringComparer.OrdinalIgnoreCase);
     private static IOverlay? _pending;
 
     public static void Register(string name, IOverlay overlay)
@@ -75,6 +79,7 @@ public static class Dispatcher
         lock (_active)
         {
             _active.Clear();
+            _partial.Clear();
         }
 
         _funcMap.Clear();
@@ -91,19 +96,50 @@ public static class Dispatcher
             already = _active.Remove(name);
         }
 
-        if (!already) HandleRegionOverwrites(overlay);
+        if (!already) HandleRegionOverwrites(name, overlay);
 
         lock (_active)
         {
             _active.Add(name);
         }
 
-        foreach (var (addr, fn) in overlay.Functions)
-            _funcMap[addr] = fn;
+        if (already)
+        {
+            // A reload writes its own entries back. Addresses a newer overlay
+            // still holds stay out, or this would undo a partial eviction.
+            lock (_active)
+            {
+                _partial.TryGetValue(name, out var hidden);
+                foreach (var (addr, fn) in overlay.Functions)
+                {
+                    if (hidden != null && hidden.ContainsKey(addr)) continue;
+                    _funcMap[addr] = fn;
+                }
+            }
 
-        if (already) return;
+            return;
+        }
+
+        // After the add, so Rebuild can see this overlay as resident and keep
+        // the functions HandleRegionOverwrites just hid.
+        Rebuild();
         Runtime.OverlayLog.Record(name, OverlayEventKind.Loaded);
-        Console.WriteLine($"[Dispatcher] loaded overlay: {name}");
+        // TEMP: the guest range this overlay matched. Image [base, base+size) when
+        // the overlay has one; otherwise the span of the function entries it bound.
+        var lo = overlay.Base;
+        var hi = overlay.Base + overlay.Size;
+        if (overlay.Size == 0 && overlay.Functions.Count > 0)
+        {
+            lo = uint.MaxValue;
+            hi = 0;
+            foreach (var addr in overlay.Functions.Keys)
+            {
+                if (addr < lo) lo = addr;
+                if (addr >= hi) hi = addr + 4;
+            }
+        }
+
+        Console.WriteLine($"[Dispatcher] loaded overlay: {name} 0x{lo:X8}-0x{hi:X8}");
 
         if (Event.HasAnyListeners<OverlayLoadedEvent>())
         {
@@ -115,13 +151,14 @@ public static class Dispatcher
         }
     }
 
-    private static void HandleRegionOverwrites(IOverlay overlay)
+    private static void HandleRegionOverwrites(string name, IOverlay overlay)
     {
         var newStart = overlay.Base & 0x1FFFFFFFu;
         var newEnd = newStart + overlay.Size;
         var hasRegion = overlay.Base != 0 && overlay.Size != 0;
 
         List<string>? overwritten = null;
+        List<(string Name, int Dropped)>? partial = null;
         List<(string Name, int Funcs)>? vramCollisions = null;
 
         lock (_active)
@@ -138,15 +175,29 @@ public static class Dispatcher
 
                     if (s < newEnd && e > newStart)
                     {
-                        // Any overlap, not only full containment. OPEN/GAME/END
-                        // all load at the same base and the later executable is
-                        // often smaller, so the contained test would leave the
-                        // previous one's functions resident. The same hole
-                        // shows up when a smaller FDAT module loads over a
-                        // larger one. Upstream still tests `s >= newStart &&
-                        // e <= newEnd` here; that is the bug 0008 fixed.
-                        overwritten ??= [];
-                        overwritten.Add(activeName);
+                        // 0008. Same base is an executable swap. OPEN/GAME/END
+                        // share a base and the later file is often smaller, so
+                        // the tail past its end has to go with the rest. A new
+                        // image that covers the old one, or an old overlay with
+                        // no function outside [newStart, newEnd), is the same
+                        // whole-overlay drop. Anything else keeps the old
+                        // overlay and hides only the functions in that range.
+                        // Rebuild leaves them out while this overlay is resident.
+                        var covered = s >= newStart && e <= newEnd;
+                        if (s == newStart || covered || !FunctionOutside(other, newStart, newEnd))
+                        {
+                            overwritten ??= [];
+                            overwritten.Add(activeName);
+                            continue;
+                        }
+
+                        var dropped = HideOverlap(activeName, other, name, newStart, newEnd);
+                        if (dropped > 0)
+                        {
+                            partial ??= [];
+                            partial.Add((activeName, dropped));
+                        }
+
                         continue;
                     }
                 }
@@ -161,18 +212,25 @@ public static class Dispatcher
 
             if (overwritten != null)
                 foreach (var d in overwritten)
+                {
                     _active.Remove(d);
+                    _partial.Remove(d);
+                }
         }
 
         if (overwritten != null)
         {
-            Rebuild();
             foreach (var d in overwritten)
             {
                 Runtime.OverlayLog.Record(d, OverlayEventKind.Overwritten, overlay.Name);
                 Console.WriteLine($"[Dispatcher] overlay {d} overwritten by {overlay.Name}");
             }
         }
+
+        if (partial != null)
+            foreach (var (victim, n) in partial)
+                Console.WriteLine(
+                    $"[Dispatcher] overlay {victim} partially overwritten by {overlay.Name}: {n} functions dropped");
 
         if (vramCollisions != null)
             foreach (var (otherName, n) in vramCollisions)
@@ -181,6 +239,86 @@ public static class Dispatcher
                 Console.WriteLine(
                     $"[Dispatcher] overlay {overlay.Name} vvram colision with {otherName}: {n} functions");
             }
+    }
+
+    // phys of addr is inside [start, end). Bases are masked the same way.
+    private static bool FunctionOutside(IOverlay other, uint start, uint end)
+    {
+        foreach (var addr in other.Functions.Keys)
+        {
+            var phys = addr & 0x1FFFFFFFu;
+            if (phys < start || phys >= end) return true;
+        }
+
+        return false;
+    }
+
+    private static int HideOverlap(string victim, IOverlay other, string by, uint start, uint end)
+    {
+        if (!_partial.TryGetValue(victim, out var hidden))
+            _partial[victim] = hidden = new Dictionary<uint, HashSet<string>>();
+
+        var n = 0;
+        foreach (var addr in other.Functions.Keys)
+        {
+            var phys = addr & 0x1FFFFFFFu;
+            if (phys < start || phys >= end) continue;
+            if (!hidden.TryGetValue(addr, out var covers))
+                hidden[addr] = covers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            covers.Add(by);
+            n++;
+        }
+
+        if (hidden.Count == 0) _partial.Remove(victim);
+        return n;
+    }
+
+    private static bool StillActive(string name)
+    {
+        foreach (var n in _active)
+            if (string.Equals(n, name, StringComparison.OrdinalIgnoreCase))
+                return true;
+        return false;
+    }
+
+    // Drop hide records whose victim or suppressor is no longer resident,
+    // so a partial eviction lasts only while the newer overlay is loaded.
+    private static void PrunePartial()
+    {
+        List<string>? dropVictims = null;
+        foreach (var (victim, hidden) in _partial)
+        {
+            if (!StillActive(victim))
+            {
+                dropVictims ??= [];
+                dropVictims.Add(victim);
+                continue;
+            }
+
+            List<uint>? dropAddrs = null;
+            foreach (var (addr, covers) in hidden)
+            {
+                covers.RemoveWhere(by => !StillActive(by));
+                if (covers.Count == 0)
+                {
+                    dropAddrs ??= [];
+                    dropAddrs.Add(addr);
+                }
+            }
+
+            if (dropAddrs != null)
+                foreach (var addr in dropAddrs)
+                    hidden.Remove(addr);
+            if (hidden.Count == 0)
+            {
+                dropVictims ??= [];
+                dropVictims.Add(victim);
+            }
+        }
+
+        if (dropVictims != null)
+            foreach (var v in dropVictims)
+                _partial.Remove(v);
     }
 
     private static int CountSharedFunctions(IOverlay a, IOverlay b)
@@ -299,9 +437,16 @@ public static class Dispatcher
         _funcMap.Clear();
         lock (_active)
         {
+            PrunePartial();
             foreach (var name in _active)
-            foreach (var (addr, fn) in _registry[name].Functions)
-                _funcMap[addr] = fn;
+            {
+                _partial.TryGetValue(name, out var hidden);
+                foreach (var (addr, fn) in _registry[name].Functions)
+                {
+                    if (hidden != null && hidden.ContainsKey(addr)) continue;
+                    _funcMap[addr] = fn;
+                }
+            }
         }
     }
 }

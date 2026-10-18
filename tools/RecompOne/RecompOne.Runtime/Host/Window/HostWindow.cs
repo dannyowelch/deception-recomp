@@ -20,6 +20,14 @@ public static class HostWindow
     private static bool _headless;
     private static Gpu? _gpu;
 
+    // 0111. GLFW will only pump events, and will only change the title or the
+    // fullscreen state, on the thread that created the window. The GL context is
+    // not tied to that thread: it follows the BIOS baton, so a psx-th thread can
+    // draw. Recorded in Initialize, which is that creating call.
+    private static int _windowThread;
+
+    private static bool OnWindowThread => _windowThread == Environment.CurrentManagedThreadId;
+
     private static uint _displayTex;
     private static uint _vramTex;
     private static uint _ramTex;
@@ -137,6 +145,7 @@ public static class HostWindow
 
     public static void Initialize(string title)
     {
+        _windowThread = Environment.CurrentManagedThreadId;
         ConfigManager.Load();
         Runtime.ApplyDefaults();
         Pgxp.Pgxp.Load();
@@ -185,12 +194,31 @@ public static class HostWindow
         _headless = true;
     }
 
+    /// <summary>Unbind the GL context from this thread so whichever PS1 thread
+    /// takes the baton can make it current. A no-op with no window.</summary>
+    internal static void ReleaseGl()
+    {
+        if (_headless) return;
+        _window?.GLContext?.Clear();
+    }
+
+    /// <summary>Make the GL context current on this thread when it is not already.
+    /// A no-op with no window.</summary>
+    internal static void AcquireGl()
+    {
+        if (_headless) return;
+        var ctx = _window?.GLContext;
+        if (ctx is null || ctx.IsCurrent) return;
+        ctx.MakeCurrent();
+    }
+
     public static string Title
     {
         get => _window?.Title ?? "";
         set
         {
-            if (_window != null) _window.Title = value ?? "";
+            if (_window == null || !OnWindowThread) return;
+            _window.Title = value ?? "";
         }
     }
 
@@ -337,37 +365,40 @@ public static class HostWindow
         // 0007. The pad is polled outside the frame loop, so a game that waits
         // on it without vsyncing does not read one frozen snapshot forever.
         _pumpedAt = _renderedAt = _pumpClock.Elapsed.TotalMilliseconds;
-        var events = Profiler.Begin(Profiler.HostEvents);
-        try
+        if (OnWindowThread)
         {
-            _window.DoEvents();
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e.Message);
-        }
+            var events = Profiler.Begin(Profiler.HostEvents);
+            try
+            {
+                _window.DoEvents();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
 
-        if (_window.IsClosing)
-        {
-            Runtime.Shutdown();
-            Environment.Exit(0);
-        }
+            if (_window.IsClosing)
+            {
+                Runtime.Shutdown();
+                Environment.Exit(0);
+            }
 
-        InputManager.Poll();
-        if (InputManager.ConsumeTopBarToggle())
-        {
-            ConfigManager.View.HideTopBar = !ConfigManager.View.HideTopBar;
-            ConfigManager.SaveView(PanelManager.Panels);
-        }
+            InputManager.Poll();
+            if (InputManager.ConsumeTopBarToggle())
+            {
+                ConfigManager.View.HideTopBar = !ConfigManager.View.HideTopBar;
+                ConfigManager.SaveView(PanelManager.Panels);
+            }
 
-        if (InputManager.ConsumeFullscreenToggle())
-        {
-            ConfigManager.View.Fullscreen = !ConfigManager.View.Fullscreen;
-            SetFullscreen(ConfigManager.View.Fullscreen);
-            ConfigManager.SaveView(PanelManager.Panels);
-        }
+            if (InputManager.ConsumeFullscreenToggle())
+            {
+                ConfigManager.View.Fullscreen = !ConfigManager.View.Fullscreen;
+                SetFullscreen(ConfigManager.View.Fullscreen);
+                ConfigManager.SaveView(PanelManager.Panels);
+            }
 
-        Profiler.End(events);
+            Profiler.End(events);
+        }
 
         // 0064. VSync on Wayland is held here, since the swap there does not wait.
         if (_cpuVSync)
@@ -479,7 +510,7 @@ public static class HostWindow
     
     public static void PumpEvents()
     {
-        if (_headless || _window == null) return;
+        if (_headless || _window == null || !OnWindowThread) return;
         
         try
         {
@@ -531,18 +562,21 @@ public static class HostWindow
     internal static void Pump()
     {
         if (_headless || _window == null) return;
-        try
+        if (OnWindowThread)
         {
-            _window.DoEvents();
-        }
-        catch
-        {
-        }
+            try
+            {
+                _window.DoEvents();
+            }
+            catch
+            {
+            }
 
-        if (_window.IsClosing)
-        {
-            Runtime.Shutdown();
-            Environment.Exit(0);
+            if (_window.IsClosing)
+            {
+                Runtime.Shutdown();
+                Environment.Exit(0);
+            }
         }
 
         RenderFrame();
@@ -567,9 +601,12 @@ public static class HostWindow
         if (now - _pumpedAt < minIntervalMs) return;
         _pumpedAt = now;
 
-        try { _window.DoEvents(); } catch { }
-        if (_window.IsClosing) { Runtime.Shutdown(); Environment.Exit(0); }
-        InputManager.Poll();
+        if (OnWindowThread)
+        {
+            try { _window.DoEvents(); } catch { }
+            if (_window.IsClosing) { Runtime.Shutdown(); Environment.Exit(0); }
+            InputManager.Poll();
+        }
 
         // Keep drawing while the game is stuck outside its frame loop, so the UI
         // stays live rather than going grey -- but at display rate, not at the
@@ -605,7 +642,7 @@ public static class HostWindow
     /// says: GLFW's fullscreen, or a borderless window the size of the monitor.</summary>
     public static void SetFullscreen(bool on)
     {
-        if (_window == null) return;
+        if (_window == null || !OnWindowThread) return;
         // Windows only, where the vblank wait needs a composed window. Wayland lets
         // no client place itself, and an X11 window manager fits an undecorated
         // one to the work area, so elsewhere a monitor-sized window never covers
@@ -813,21 +850,25 @@ public static class HostWindow
 
         GpuJobs.Run(() =>
         {
-            try
+            if (OnWindowThread)
             {
-                _window!.DoEvents();
-            }
-            catch
-            {
+                try
+                {
+                    _window!.DoEvents();
+                }
+                catch
+                {
+                }
+
+                if (_window!.IsClosing)
+                {
+                    closing = true;
+                    return;
+                }
+
+                InputManager.Poll();
             }
 
-            if (_window!.IsClosing)
-            {
-                closing = true;
-                return;
-            }
-
-            InputManager.Poll();
             RenderFrame();
         });
 
