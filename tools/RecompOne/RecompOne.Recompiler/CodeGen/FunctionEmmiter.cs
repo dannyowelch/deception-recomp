@@ -97,9 +97,17 @@ public static class FunctionEmitter
         {
             var target = ctx.SkipNopPadding(func.End);
             if (ctx.KnownFunctions.TryGetValue(target, out var fallthroughName))
+            {
+                var probe = ctx.KokumeiProbe(target, dispatched: false);
+                if (probe != null) body.AppendLine($"{ind}{probe}");
                 body.AppendLine($"{ind}{fallthroughName}(c, m);");
+            }
             else
+            {
+                var probe = ctx.KokumeiProbe(target, dispatched: true);
+                if (probe != null) body.AppendLine($"{ind}{probe}");
                 body.AppendLine($"{ind}Dispatcher.Call(c, m, 0x{target:X8}u);");
+            }
         }
 
         var text = body.ToString();

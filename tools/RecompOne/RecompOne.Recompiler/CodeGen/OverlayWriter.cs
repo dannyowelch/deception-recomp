@@ -260,6 +260,16 @@ public static class OverlayWriter
         var uniqueAddrs = allFuncs.GroupBy(f => f.Start).Where(g => g.Count() == 1).Select(g => g.Key).ToHashSet();
         var knownFuncs = allFuncs.Where(f => uniqueAddrs.Contains(f.Start))
             .ToDictionary(f => f.Start, f => $"{Owner(funcClass, f.Start, className)}.{f.EmittedName}");
+        // Unique starts in the shared slot. A kokumei direct call to one of these
+        // is logged with the overlay name; every other constant call is "dispatch".
+        var slotOwners = new Dictionary<uint, string>();
+        foreach (var result in overlayResults)
+        {
+            if ((result.Base & 0x1FFFFFFFu) != 0x000B3578u) continue;
+            foreach (var func in result.Functions)
+                if (uniqueAddrs.Contains(func.Start))
+                    slotOwners[func.Start] = result.Name;
+        }
 
         var conflictCount = allFuncs.Count - knownFuncs.Count;
         Console.WriteLine($"[Recompiler] total functions: {allFuncs.Count}");
@@ -281,7 +291,8 @@ public static class OverlayWriter
             EmitOverlayFile(result.Name, overlayParts[result.Name], knownFuncs, config.Debug,
                 config.AddressComments, config.DisasmComments, result.LbaStart, result.Base, result.Size,
                 result.Instructions, outDir,
-                SymbolRelocator.Plan(result.Functions, config.Relocations, result.Name));
+                SymbolRelocator.Plan(result.Functions, config.Relocations, result.Name),
+                result.Name == "kokumei", slotOwners);
         }
 
         Console.WriteLine("[Recompiler] Emitting Entry.cs");
@@ -331,7 +342,7 @@ public static class OverlayWriter
     private static void EmitOverlayFile(string overlayName, List<OverlayPart> parts,
         Dictionary<uint, string> knownFuncs, bool debug, bool addressComments,
         bool disasmComments, int lbaStart, uint ovlBase, uint ovlSize, MipsInstruction[] instrs, string outDir,
-        Dictionary<uint, uint> relocations)
+        Dictionary<uint, uint> relocations, bool probeKokumeiCalls, Dictionary<uint, string> slotOwners)
     {
         var funcs = parts.SelectMany(p => p.Functions).ToList();
         var partClass = new Dictionary<uint, string>();
@@ -369,7 +380,9 @@ public static class OverlayWriter
                     RaReturnJrs = FunctionDetector.ComputeRaReturnJrs(func),
                     LinkReturns = LabelManager.CollectLinkReturns(func),
                     AllInstructions = instrs,
-                    Relocations = relocations
+                    Relocations = relocations,
+                    ProbeKokumeiCalls = probeKokumeiCalls,
+                    SlotOwners = slotOwners
                 };
                 sb.Append(FunctionEmitter.Emit(func, ctx));
             }
