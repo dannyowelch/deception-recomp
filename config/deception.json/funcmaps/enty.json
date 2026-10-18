@@ -131,6 +131,11 @@
       "size": 220
     },
     {
+      "address": "0x800B7B3C",
+      "name": "func_800B7B3C",
+      "size": 204
+    },
+    {
       "address": "0x800B7C08",
       "name": "func_800B7C08",
       "size": 600

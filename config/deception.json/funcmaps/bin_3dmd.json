@@ -3426,6 +3426,11 @@
       "size": 120
     },
     {
+      "address": "0x800D1D48",
+      "name": "func_800D1D48",
+      "size": 72
+    },
+    {
       "address": "0x800D1D90",
       "name": "func_800D1D90",
       "size": 1096
@@ -4458,17 +4463,12 @@
     {
       "address": "0x800DBF9C",
       "name": "func_800DBF9C",
-      "size": 420
+      "size": 24
     },
     {
-      "address": "0x800DC028",
-      "name": "func_800DC028",
-      "size": 280
-    },
-    {
-      "address": "0x800DC110",
-      "name": "func_800DC110",
-      "size": 48
+      "address": "0x800DBFB4",
+      "name": "func_800DBFB4",
+      "size": 396
     },
     {
       "address": "0x800DC140",
@@ -6391,89 +6391,14 @@
       "size": 184
     },
     {
-      "address": "0x800F5C94",
-      "name": "func_800F5C94",
-      "size": 104
-    },
-    {
-      "address": "0x800F5CFC",
-      "name": "func_800F5CFC",
-      "size": 148
-    },
-    {
-      "address": "0x800F5D90",
-      "name": "func_800F5D90",
-      "size": 236
-    },
-    {
-      "address": "0x800F5E7C",
-      "name": "func_800F5E7C",
-      "size": 180
-    },
-    {
-      "address": "0x800F5E84",
-      "name": "func_800F5E84",
-      "size": 172
-    },
-    {
-      "address": "0x800F5E8C",
-      "name": "func_800F5E8C",
-      "size": 164
-    },
-    {
-      "address": "0x800F5EBC",
-      "name": "func_800F5EBC",
-      "size": 116
-    },
-    {
-      "address": "0x800F5F30",
-      "name": "func_800F5F30",
-      "size": 180
-    },
-    {
-      "address": "0x800F5FE4",
-      "name": "func_800F5FE4",
-      "size": 180
-    },
-    {
-      "address": "0x800F60F0",
-      "name": "func_800F60F0",
-      "size": 256
-    },
-    {
-      "address": "0x800F6194",
-      "name": "func_800F6194",
-      "size": 92
-    },
-    {
-      "address": "0x800F619C",
-      "name": "func_800F619C",
-      "size": 84
+      "address": "0x800F5C14",
+      "name": "func_800F5C14",
+      "size": 1500
     },
     {
       "address": "0x800F61F0",
       "name": "func_800F61F0",
-      "size": 380
-    },
-    {
-      "address": "0x800F62B4",
-      "name": "func_800F62B4",
-      "size": 184
-    },
-    {
-      "address": "0x800F6300",
-      "name": "func_800F6300",
-      "size": 56
-    },
-    {
-      "address": "0x800F6304",
-      "name": "func_800F6304",
-      "size": 52
-    },
-    {
-      "address": "0x800F6338",
-      "name": "func_800F6338",
-      "size": 52
+      "size": 448
     },
     {
       "address": "0x800F63B0",
@@ -6481,29 +6406,9 @@
       "size": 228
     },
     {
-      "address": "0x800F6434",
-      "name": "func_800F6434",
-      "size": 96
-    },
-    {
-      "address": "0x800F6468",
-      "name": "func_800F6468",
-      "size": 44
-    },
-    {
       "address": "0x800F6494",
       "name": "func_800F6494",
       "size": 356
-    },
-    {
-      "address": "0x800F6584",
-      "name": "func_800F6584",
-      "size": 116
-    },
-    {
-      "address": "0x800F65E8",
-      "name": "func_800F65E8",
-      "size": 16
     },
     {
       "address": "0x800F65F8",

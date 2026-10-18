@@ -1,6 +1,11 @@
 {
   "functions": [
     {
+      "address": "0x800B3B30",
+      "name": "func_800B3B30",
+      "size": 332
+    },
+    {
       "address": "0x800B3C7C",
       "name": "func_800B3C7C",
       "size": 436
