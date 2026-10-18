@@ -3543,17 +3543,7 @@
     {
       "address": "0x80042F98",
       "name": "func_80042F98",
-      "size": 64
-    },
-    {
-      "address": "0x80042FD8",
-      "name": "func_80042FD8",
-      "size": 24
-    },
-    {
-      "address": "0x80042FF0",
-      "name": "func_80042FF0",
-      "size": 232
+      "size": 320
     },
     {
       "address": "0x800430D8",
