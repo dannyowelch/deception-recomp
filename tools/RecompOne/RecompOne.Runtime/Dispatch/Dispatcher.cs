@@ -410,9 +410,10 @@ public static class Dispatcher
     }
 
     /// <summary>
-    /// TEMP. A kokumei call into an overlay class. The call that follows is unchanged.
-    /// Prints the class the call was compiled for, the overlay a dispatcher lookup would
-    /// bind this address to, and the overlays actually resident. One line per distinct
+    /// TEMP. A kokumei constant call. The call that follows is unchanged.
+    /// Prints the class the call was compiled for ("dispatch" when the recompiler
+    /// emitted Dispatcher.Call), the overlay a dispatcher lookup would bind this
+    /// address to, and the overlays actually resident. One line per distinct
     /// site, target, binding, resident set and thread.
     /// </summary>
     public static void TempKokumeiCall(CpuContext c, string compiledFor, uint addr)

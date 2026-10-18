@@ -482,8 +482,10 @@ public sealed class FunctionContext
     public Dictionary<uint, uint> Relocations = [];
 
     // TEMP. Kokumei recompiles used to wipe the hand-inserted probes in kokumei.cs.
-    // Emitted for that overlay only: before a direct call into the 0x800B3578 slot,
-    // and before a constant Dispatcher.Call. Register jumps are left alone.
+    // Emitted for that overlay only, before every constant call. A call into the
+    // 0x800B3578 slot is Dispatcher.Call (compiled-for "dispatch"). A direct call
+    // that still names a slot owner is probed with that overlay. Register jumps
+    // are left alone.
     public bool ProbeKokumeiCalls;
     public Dictionary<uint, string> SlotOwners = [];
 

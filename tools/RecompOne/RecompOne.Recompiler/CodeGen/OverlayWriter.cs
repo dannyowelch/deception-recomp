@@ -260,8 +260,11 @@ public static class OverlayWriter
         var uniqueAddrs = allFuncs.GroupBy(f => f.Start).Where(g => g.Count() == 1).Select(g => g.Key).ToHashSet();
         var knownFuncs = allFuncs.Where(f => uniqueAddrs.Contains(f.Start))
             .ToDictionary(f => f.Start, f => $"{Owner(funcClass, f.Start, className)}.{f.EmittedName}");
-        // Unique starts in the shared slot. A kokumei direct call to one of these
-        // is logged with the overlay name; every other constant call is "dispatch".
+        // Unique starts in the shared 0x800B3578 slot. Kokumei must not call these
+        // as Owner.func: bin_3dmd, enty and plan occupy one address, so the overlay
+        // resident at the call is what should run. Those starts are taken out of
+        // kokumei's known-function map and emit Dispatcher.Call. The names stay
+        // here so a direct call, if one is still emitted, is probed with its owner.
         var slotOwners = new Dictionary<uint, string>();
         foreach (var result in overlayResults)
         {
@@ -270,6 +273,11 @@ public static class OverlayWriter
                 if (uniqueAddrs.Contains(func.Start))
                     slotOwners[func.Start] = result.Name;
         }
+
+        var kokumeiKnown = new Dictionary<uint, string>(knownFuncs.Count);
+        foreach (var kv in knownFuncs)
+            if (!slotOwners.ContainsKey(kv.Key))
+                kokumeiKnown[kv.Key] = kv.Value;
 
         var conflictCount = allFuncs.Count - knownFuncs.Count;
         Console.WriteLine($"[Recompiler] total functions: {allFuncs.Count}");
@@ -288,7 +296,8 @@ public static class OverlayWriter
         foreach (var result in overlayResults)
         {
             Console.WriteLine($"[Recompiler] emiting {result.Name}.cs ({result.Functions.Count} functions)");
-            EmitOverlayFile(result.Name, overlayParts[result.Name], knownFuncs, config.Debug,
+            var known = result.Name == "kokumei" ? kokumeiKnown : knownFuncs;
+            EmitOverlayFile(result.Name, overlayParts[result.Name], known, config.Debug,
                 config.AddressComments, config.DisasmComments, result.LbaStart, result.Base, result.Size,
                 result.Instructions, outDir,
                 SymbolRelocator.Plan(result.Functions, config.Relocations, result.Name),
