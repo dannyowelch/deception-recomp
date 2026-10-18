@@ -4601,34 +4601,9 @@
       "size": 448
     },
     {
-      "address": "0x800DE114",
-      "name": "func_800DE114",
-      "size": 80
-    },
-    {
-      "address": "0x800DE164",
-      "name": "func_800DE164",
-      "size": 300
-    },
-    {
-      "address": "0x800DE1AC",
-      "name": "func_800DE1AC",
-      "size": 228
-    },
-    {
-      "address": "0x800DE290",
-      "name": "func_800DE290",
-      "size": 92
-    },
-    {
-      "address": "0x800DE334",
-      "name": "func_800DE334",
-      "size": 256
-    },
-    {
-      "address": "0x800DE3FC",
-      "name": "func_800DE3FC",
-      "size": 56
+      "address": "0x800DE194",
+      "name": "func_800DE194",
+      "size": 672
     },
     {
       "address": "0x800DE434",
