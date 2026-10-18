@@ -137,6 +137,11 @@ public static class LibCd
 
     internal static readonly object DiscLock = new();
     private static readonly object _posGate = new();
+    // Setloc's target has to stay in _pos until CdRead, ReadN, ReadS, Play or
+    // Seek consumes it. The XA pacer and the CDDA tick otherwise move _pos
+    // while _readActive is already false, and a full-file read then starts a
+    // few sectors past the file.
+    private static bool _setlocHeld;
 
     private static Thread? _xaThread;
     private static volatile bool _xaRun;
@@ -223,10 +228,12 @@ public static class LibCd
         var sectors = (int)c.A0;
         var buf = c.A1;
         _mode = (byte)c.A2;
-        var lba = CurrentLba;
+        int lba;
         byte mm, ss, ff;
         lock (_posGate)
         {
+            _setlocHeld = false;
+            lba = PosToInt(_pos);
             mm = _pos[0];
             ss = _pos[1];
             ff = _pos[2];
@@ -358,7 +365,8 @@ public static class LibCd
         var at = _cddaPos < _cddaEndLba ? (int)_cddaPos : _cddaEndLba;
         lock (_posGate)
         {
-            IntToPos(at, out _pos[0], out _pos[1], out _pos[2]);
+            if (!_setlocHeld)
+                IntToPos(at, out _pos[0], out _pos[1], out _pos[2]);
         }
 
         if (_cddaPos < _cddaEndLba) return;
@@ -506,6 +514,7 @@ public static class LibCd
     {
         lock (_posGate)
         {
+            _setlocHeld = false;
             IntToPos(lba, out _pos[0], out _pos[1], out _pos[2]);
         }
     }
@@ -981,16 +990,26 @@ public static class LibCd
         if (!Assets.Xa.XaRouter.WantsCarrier(out var rewindLba)) return;
         lock (_posGate)
         {
+            if (_setlocHeld) return;
             IntToPos(rewindLba, out _pos[0], out _pos[1], out _pos[2]);
         }
 
         Log.Sdk($"[assets] xa carrier rewinds to {rewindLba}");
     }
 
+    private static void ReleaseSetloc()
+    {
+        lock (_posGate)
+        {
+            _setlocHeld = false;
+        }
+    }
+
     private static void AdvancePos(int n)
     {
         lock (_posGate)
         {
+            if (_setlocHeld) return;
             IntToPos(PosToInt(_pos) + n, out _pos[0], out _pos[1], out _pos[2]);
         }
     }
@@ -1181,7 +1200,11 @@ public static class LibCd
         FifoReload(-1);
         _cddaMute = false;
         _filterFile = _filterChannel = 0;
-        Array.Clear(_pos);
+        lock (_posGate)
+        {
+            _setlocHeld = false;
+            Array.Clear(_pos);
+        }
         Array.Clear(_lastResult);
         Runtime.Spu?.SetCdMix(0x80, 0, 0x80, 0); //reset mix
         Dispatcher.ClearPending();
@@ -1216,6 +1239,7 @@ public static class LibCd
                     lock (_posGate)
                     {
                         for (var i = 0; i < 4; i++) _pos[i] = m.ReadU8(param + (uint)i);
+                        _setlocHeld = true;
                     }
 
                 _readActive = false;
@@ -1237,11 +1261,14 @@ public static class LibCd
 
                 break;
             case ReadN:
+            {
                 StopCdda();
-                if (IsAudioRegion(CurrentLba) && (_mode & 0x01) == 0)
+                var readLba = CurrentLba;
+                if (IsAudioRegion(readLba) && (_mode & 0x01) == 0)
                 {
+                    ReleaseSetloc();
                     _readActive = false;
-                    Log.Sdk($"readn out range lba={CurrentLba}");
+                    Log.Sdk($"readn out range lba={readLba}");
                     SetError(0x40, 0x01);
                     if (result != 0) WriteResult(m, result);
                     return DiskError;
@@ -1250,20 +1277,24 @@ public static class LibCd
                 _readActive = true;
                 _xaActive = true;
                 _xaFirstSector = true;
+                _status = (byte)(StatMotor | StatRead);
+                Dispatcher.LoadByLba(readLba);
+                ReleaseSetloc();
                 StartXaPacer();
                 WakeXa();
-
-                _status = (byte)(StatMotor | StatRead);
-                Dispatcher.LoadByLba(CurrentLba);
                 EnsureXaThread();
                 break;
+            }
             case ReadS:
+            {
                 StopCdda();
-                if (IsAudioRegion(CurrentLba) && (_mode & 0x01) == 0)
+                var readLba = CurrentLba;
+                if (IsAudioRegion(readLba) && (_mode & 0x01) == 0)
                 {
+                    ReleaseSetloc();
                     _xaActive = false;
                     _readActive = false;
-                    Log.Sdk($"ReadS out range lba={CurrentLba}");
+                    Log.Sdk($"ReadS out range lba={readLba}");
                     SetError(0x40, 0x01);
                     if (result != 0) WriteResult(m, result);
                     return DiskError;
@@ -1273,14 +1304,17 @@ public static class LibCd
                 _xaFirstSector = true;
                 _readActive = (_mode & 0x40) == 0;
                 _status = (byte)(StatMotor | StatRead);
-                LibCdStream.OnReadStream(CurrentLba);
+                LibCdStream.OnReadStream(readLba);
+                ReleaseSetloc();
                 EnsureXaThread();
                 break;
+            }
             case Play:
                 _readActive = false;
                 _xaActive = false;
                 _status = (byte)(StatMotor | StatPlay);
                 StartCdda();
+                ReleaseSetloc();
                 break;
             case Getparam:
                 _lastResult[0] = _status;
@@ -1350,6 +1384,7 @@ public static class LibCd
             case Pause:
             case Stop:
             case Init:
+                ReleaseSetloc();
                 lock (_dataIrqQueue)
                 {
                     _dataIrqQueue.Clear();
@@ -1364,27 +1399,33 @@ public static class LibCd
                 Dispatcher.ClearPending();
                 break;
             case SeekL:
+            {
                 StopCdda();
-                if (IsAudioRegion(CurrentLba))
+                var seekLba = CurrentLba;
+                ReleaseSetloc();
+                if (IsAudioRegion(seekLba))
                 {
-                    Log.Sdk($"SeekL out range lba={CurrentLba}");
+                    Log.Sdk($"SeekL out range lba={seekLba}");
                     SetError(0x04, 0x04);
                     if (result != 0) WriteResult(m, result);
                     return 0;
                 }
 
                 break;
+            }
             case Mute:
                 _cddaMute = true;
                 break;
             case Demute:
                 _cddaMute = false;
                 break;
+            case SeekP:
+                ReleaseSetloc();
+                break;
             case Nop:
             case Forward:
             case Backward:
             case Standby:
-            case SeekP:
                 break;
             default:
                 break;
