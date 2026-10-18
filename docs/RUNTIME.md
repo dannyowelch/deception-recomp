@@ -532,7 +532,11 @@ shape of bug, even though they were not what froze the window:
   every `GAME.EXE` function past `0x8003A000` remained callable. The same hole
   hits a smaller FDAT module loading over a larger one, and quit-to-title
   (`OPEN.EXE` over `GAME.EXE`). `tools/RecompOne/patches/0008` unloads on any
-  overlap.
+  overlap. Since amended: only a same-base swap, a new image that covers the
+  old one, or an old overlay with no function outside the new image removes
+  the whole overlay. Any other overlap keeps it and drops the functions inside
+  the new range, and `Rebuild` does not put them back while the newer overlay
+  is resident.
 - The FDAT modules sit at `0x8019F07C`, which does not overlap any executable,
   so even with that fix they would survive into `END.EXE`. Its heap starts at
   `0x80100000` and covers that RAM. `Program.cs` unloads every `fdat*` overlay
@@ -609,8 +613,9 @@ is cheap, and it is the only way to see whether the game ever enabled the displa
 **`0008-unload-overlapping-overlays.patch`** is the executable-swap fix written up
 under "The ending screen" above: `HandleRegionOverwrites` only dropped an overlay
 *fully contained* in the new one, so `GAME.EXE` stayed mapped under the smaller
-`END.EXE` at the same base. Any overlap is now an overwrite. The same hole hits a
-smaller FDAT module loading over a larger one, and quit-to-title.
+`END.EXE` at the same base. A same-base load is still a whole overwrite, so that
+swap and quit-to-title stay. A partial overlap keeps the earlier overlay and drops
+only the functions inside the new image.
 
 **`0012-exact-gte-vertex-map.patch`** replaces the screen-position key of `0009`
 and `0011` with the **RAM address** the coordinate is stored at, following the
@@ -1288,6 +1293,20 @@ interval 1 with SSAO on High, to put the GPU at its limit, alternating: **60.0 f
 deferred, 56.0 immediate, in both rounds**. `KF2_SWAP=immediate` is the
 comparison, and the cost is one refresh of latency. It is the path X11 takes now,
 where it has not been run.
+
+## A BIOS thread drew without a GL context
+
+PS1 threads (`BiosB.ChangeTh`, `RunTh`) each run on an OS thread named `psx-th`,
+and only one runs at a time: the baton. The GLFW OpenGL context stayed current
+on the thread that created the window, so a draw from the other thread threw
+`GlfwException: NoContext`. `0111` makes the context follow the baton.
+`ReleaseGl` runs before the other thread is started or woken, `AcquireGl` runs
+when `Wait` returns and before `RunTh` enters the guest, and `ReleaseGl` runs
+again before the baton is handed back. `glfwPollEvents`, the input poll, and
+title and fullscreen changes stay on the thread that created the window, whose
+id `Initialize` records. Drawing and the buffer swap run on whichever thread
+holds the context. Both context calls do nothing in headless mode. **Not run.**
+**No recompile.**
 
 ## Two general shapes worth keeping
 

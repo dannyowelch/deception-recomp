@@ -243,6 +243,7 @@ What a static recompilation loses (interrupts, VSync-driven work) and the patche
 - Leaving fullscreen left the interface at the fullscreen size
 - The menu bar starts hidden
 - Minimising froze the game on Wayland
+- A BIOS thread drew without a GL context
 - Two general shapes worth keeping
 - Upstream contribution policy
 
