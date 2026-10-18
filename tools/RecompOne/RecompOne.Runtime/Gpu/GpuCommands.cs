@@ -1,3 +1,5 @@
+using RecompOne.Runtime.Hle;
+
 namespace RecompOne.Runtime;
 
 public sealed partial class Gpu
@@ -51,16 +53,22 @@ public sealed partial class Gpu
         }
     }
 
+    // TEMP. 1 after E3(0,0), 2 after E4(full VRAM), 3 after E5(0,0), 4 after E6.
+    // The next rectangle is an unaligned ClearImage. Not a permanent API.
+    private int _tempClearArm;
+
     private void Execute()
     {
         var word = _fifo[0];
         var op = word >> 24;
+        var armed = _tempClearArm;
+        _tempClearArm = 0;
         switch (op)
         {
             case 0x02: FillRect(); break;
             case >= 0x20 and <= 0x3F: DrawPolygon(); break;
             case >= 0x40 and <= 0x5F: DrawLine(); break;
-            case >= 0x60 and <= 0x7F: DrawRectangle(); break;
+            case >= 0x60 and <= 0x7F: DrawRectangle(armed == 4); break;
             case >= 0x80 and <= 0x9F: CopyVramToVram(); break;
             case >= 0xA0 and <= 0xBF: BeginImageLoad(); break;
             case >= 0xC0 and <= 0xDF: BeginImageRead(); break;
@@ -69,18 +77,23 @@ public sealed partial class Gpu
             case 0xE3:
                 _drawAreaLeft = (int)(word & 0x3FF);
                 _drawAreaTop = (int)((word >> 10) & 0x3FF);
+                if (_drawAreaLeft == 0 && _drawAreaTop == 0) _tempClearArm = 1;
                 break;
             case 0xE4:
                 _drawAreaRight = (int)(word & 0x3FF);
                 _drawAreaBottom = (int)((word >> 10) & 0x3FF);
+                if (armed == 1 && _drawAreaRight == VramWidth - 1 && _drawAreaBottom == VramHeight - 1)
+                    _tempClearArm = 2;
                 break;
             case 0xE5:
                 _drawOffsetX = SignExtend11(word & 0x7FF);
                 _drawOffsetY = SignExtend11((word >> 11) & 0x7FF);
+                if (armed == 2 && _drawOffsetX == 0 && _drawOffsetY == 0) _tempClearArm = 3;
                 break;
             case 0xE6:
                 _setMask = (word & 1) != 0;
                 _checkMask = (word & 2) != 0;
+                if (armed == 3) _tempClearArm = 4;
                 break;
         }
     }
@@ -105,11 +118,14 @@ public sealed partial class Gpu
 
     private void FillRect()
     {
-        var color = To15((int)(_fifo[0] & 0xFF), (int)((_fifo[0] >> 8) & 0xFF), (int)((_fifo[0] >> 16) & 0xFF));
-        var x = (int)(_fifo[1] & 0x3F0);
-        var y = (int)((_fifo[1] >> 16) & 0x1FF);
-        var w = (int)(((_fifo[2] & 0x3FF) + 0xF) & ~0xF);
-        var h = (int)((_fifo[2] >> 16) & 0x1FF);
+        int r = (int)(_fifo[0] & 0xFF), g = (int)((_fifo[0] >> 8) & 0xFF), b = (int)((_fifo[0] >> 16) & 0xFF);
+        var color = To15(r, g, b);
+        int rawX = (int)(_fifo[1] & 0x3FF), rawY = (int)((_fifo[1] >> 16) & 0x1FF);
+        int rawW = (int)(_fifo[2] & 0x3FF), rawH = (int)((_fifo[2] >> 16) & 0x1FF);
+        var x = rawX & 0x3F0;
+        var y = rawY;
+        var w = (rawW + 0xF) & ~0xF;
+        var h = rawH;
 
         if (x + w <= VramWidth)
             for (var dy = 0; dy < h; dy++)
@@ -126,7 +142,18 @@ public sealed partial class Gpu
         if (!Detached) Assets.Textures.VramTracker.MarkCpuWrite(x, y, w, h);
         ClearZ(x, y, w, h);
 
+        // TEMP. vram=yes is the software fill above. applied is what the GL renderer
+        // did with it: rt-clear (glClear of a display target the rect covers),
+        // rt-blit (the overlap copied back from sample VRAM), or vram-only.
+        GpuHle.TempFillApplied = "vram-only";
         if (HleOn) HleFill(x, y, w, h, color);
+        if (!Detached)
+        {
+            string raw = rawX != x || rawY != y || rawW != w || rawH != h
+                ? $" raw={rawX},{rawY},{rawW}x{rawH}" : "";
+            Console.WriteLine(
+                $"[TEMP] fill op=02 x={x} y={y} w={w} h={h} rgb={r},{g},{b} color15=0x{color:X4} vram=yes applied={GpuHle.TempFillApplied}{raw}");
+        }
     }
 
     private void CopyVramToVram()
@@ -150,7 +177,15 @@ public sealed partial class Gpu
 
         if (!Detached) Assets.Textures.VramTracker.MarkCpuWrite(dx, dy, w, h);
 
+        // TEMP. Every MoveImage, including a copy that misses both display rects.
+        // applied is what the GL renderer did: writeback (a dirty source target
+        // copied into sample VRAM), sync (a destination target updated from VRAM),
+        // vram-only, or recorded.
+        GpuHle.TempMoveApplied = "vram-only";
         if (HleOn) HleCopy(sx, sy, dx, dy, w, h);
+        if (!Detached)
+            Console.WriteLine(
+                $"[TEMP] move op=80 src={sx},{sy},{w}x{h} dst={dx},{dy},{w}x{h} applied={GpuHle.TempMoveApplied}");
     }
 
     private void BeginImageLoad()
