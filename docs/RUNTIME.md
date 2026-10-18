@@ -227,9 +227,15 @@ same gap. IRQ 0 moved with it, out of `PresentFrame`. Presentation cadence
 (`PresentFrame`, `FrameClock.Throttle`, the FramePacing floor) is untouched. A
 host stall longer than 120 vblanks (~2 s — window drag, breakpoint) discards the
 stale backlog and processes only the current vblank, rather than fast-forwarding
-the game through the gap. Mode semantics are
+the game through the gap. Mode semantics at the time of that patch were
 unchanged (`<0` returns the count, `==1` returns immediately); the game passes 0
-at every call site in all three overlays.
+at every call site in all three overlays. The default timeline now waits on
+this same grid: `VSync(0)` and `VSync(1)` return once one vblank has passed
+since the previous waiting return, `VSync(n)` for `n > 1` waits for `n`
+(`VSync(2)` is 30 Hz), and `VSync(n < 0)` still returns the count without
+waiting. Each step of the wait delivers IRQ 0 before the next sleep. The call
+presents once, and `FrameClock.Throttle` does not add a second frame on that
+present.
 
 **Measurement:** with a frame-stats mod (since removed), title windows go from
 `vblanks/frame 1:100%` to a spread worth ~60 vblanks/s; in-area windows stay
