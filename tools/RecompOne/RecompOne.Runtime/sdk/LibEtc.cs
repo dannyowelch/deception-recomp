@@ -66,6 +66,7 @@ public static class LibEtc
     public static void VSync(CpuContext c, IMemory m)
     {
         var mode = (int)c.A0;
+        TempVSync(mode);
         if (Log.VSyncOn) Log.Sdk($"VSync({mode})");
 
         if (mode < 0)
@@ -194,6 +195,7 @@ public static class LibEtc
 
     private static void TickVBlank(CpuContext c, IMemory m)
     {
+        TempVBlank();
         _vcount++;
 
         //0021: RCntCNT3/EvSpINT, the vblank root counter's event, is not delivered
@@ -254,5 +256,73 @@ public static class LibEtc
 
             Interrupts.PollNow(c, m);
         }
+    }
+
+    // TEMP. One line a second. vblanks is each delivery on this grid (a catch-up
+    // burst counts as many). vsync is every VSync call, grouped by its argument.
+    // loops is kokumei's main loop at 0x800174EC, emitted by the recompiler.
+    // presents is Runtime.PresentFrame. Not a permanent API, and it does not
+    // wait, sleep, or move the grid.
+    private static long _tempVblanks;
+    private static long _tempLoops;
+    private static long _tempPresents;
+    private static readonly Dictionary<int, long> _tempVsync = new();
+    private static double _tempLogAt = -1;
+
+    private static void TempVSync(int mode)
+    {
+        _tempVsync.TryGetValue(mode, out var n);
+        _tempVsync[mode] = n + 1;
+        TempPaceLog();
+    }
+
+    private static void TempVBlank()
+    {
+        _tempVblanks++;
+        TempPaceLog();
+    }
+
+    public static void NoteGameLoop()
+    {
+        _tempLoops++;
+        TempPaceLog();
+    }
+
+    internal static void NotePresent()
+    {
+        _tempPresents++;
+        TempPaceLog();
+    }
+
+    private static void TempPaceLog()
+    {
+        var now = VBlankClock.Elapsed.TotalMilliseconds;
+        if (_tempLogAt < 0)
+        {
+            _tempLogAt = now;
+            return;
+        }
+
+        var elapsed = now - _tempLogAt;
+        if (elapsed < 1000.0) return;
+
+        var keys = new List<int>(_tempVsync.Keys);
+        keys.Sort();
+        var vs = "none";
+        if (keys.Count > 0)
+        {
+            var parts = new string[keys.Count];
+            for (var i = 0; i < keys.Count; i++)
+                parts[i] = $"{keys[i]}:{_tempVsync[keys[i]]}";
+            vs = string.Join(",", parts);
+        }
+
+        Console.WriteLine(
+            $"[TEMP] pace {elapsed:0}ms vblanks={_tempVblanks} vsync={vs} loops={_tempLoops} presents={_tempPresents}");
+        _tempVblanks = 0;
+        _tempLoops = 0;
+        _tempPresents = 0;
+        _tempVsync.Clear();
+        _tempLogAt = now;
     }
 }

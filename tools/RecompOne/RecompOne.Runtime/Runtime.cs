@@ -441,6 +441,7 @@ public static class Runtime
         // DoRender and the window stayed black while the game ran normally
         // underneath it. Restored here, where it was and where every measurement
         // in the port was taken.
+        Sdk.LibEtc.NotePresent();
         HostWindow.Present(Gpu);
 
         Audio.Attach(Spu);
