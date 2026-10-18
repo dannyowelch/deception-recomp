@@ -3,6 +3,7 @@ using RecompOne.Runtime.Context;
 using RecompOne.Runtime.Diagnostics;
 using RecompOne.Runtime.Events;
 using RecompOne.Runtime.Hardware;
+using RecompOne.Runtime.Host;
 using RecompOne.Runtime.Memory;
 
 namespace RecompOne.Runtime.Sdk;
@@ -15,18 +16,14 @@ public static class LibEtc
     private static readonly VSyncEvent _vsyncEvent = new();
 
     /// <summary>
-    /// Which of the two vblank timelines VSync runs on.
-    ///
-    /// Upstream grew its own after the pin: Interrupts owns a wall-clock grid and
-    /// VSync *blocks* in WaitVBlanks until the count reaches its target, which is
-    /// what the hardware does and is also a hard 60 Hz ceiling on every VSync
-    /// call. This port cannot have that ceiling -- FramePacing hands FrameClock a
-    /// deliberately permissive rate and keeps its own deadline at DrawOTag, and
-    /// MenuPacing, LoadPacing and SpriteAnim are all measured against a VSync that
-    /// returns immediately. So 0021's non-blocking grid stays the default and
-    /// upstream's is here beside it, to be compared rather than replaced.
-    ///
-    /// KF2_VSYNC=block is the console switch.
+    /// Which 60 Hz clock a waiting VSync sleeps on. Both clocks honor the same
+    /// quota: <c>VSync(0)</c> and <c>VSync(1)</c> return once one vblank has passed
+    /// since the previous waiting return, and <c>VSync(n)</c> for <c>n &gt; 1</c>
+    /// waits for <c>n</c> vblanks (<c>VSync(2)</c> is 30 Hz). <c>VSync(n &lt; 0)</c>
+    /// returns the count and does not wait or present. The default clock is the
+    /// grid in this class. <c>KF2_VSYNC=block</c> uses <c>Interrupts</c> instead.
+    /// A waiting call presents once, and that present does not also take
+    /// <c>FrameClock</c>'s host ceiling.
     /// </summary>
     public static bool BlockingVSync;
 
@@ -75,14 +72,6 @@ public static class LibEtc
             return;
         }
 
-        if (mode == 1)
-        {
-            //The pin returned 0 here and the port's measurements were taken
-            //against that, so only the blocking timeline reports real hblanks.
-            c.V0 = BlockingVSync ? Elapsed() : 0;
-            return;
-        }
-
         VSyncCalls++;
         if (CaptureNextStack)
         {
@@ -111,11 +100,14 @@ public static class LibEtc
 
     private static void Present(CpuContext c, IMemory m, int mode)
     {
-        Runtime.PresentFrame();
+        // VSync(0) is one vblank, the same quota as VSync(1). The anchor is the
+        // previous waiting return, so a late caller does not wait out a fresh
+        // period on top of vblanks that already passed.
+        var count = mode == 0 ? 1 : mode;
 
         if (BlockingVSync)
         {
-            WaitVBlanks(c, m, mode == 0 ? 1 : mode);
+            WaitVBlanks(c, m, count);
             var elapsed = Elapsed();
             _lastVSyncCount = Interrupts.VBlankCount;
             _lastVSyncMs = Interrupts.ClockMs;
@@ -130,14 +122,82 @@ public static class LibEtc
                 Event.Dispatch(e);
             }
 
+            PresentOnce();
             c.V0 = elapsed;
             return;
         }
 
         var vblank = Profiler.Begin(Profiler.VBlank);
-        AdvanceVBlanks(c, m);
+        WaitVBlankQuota(c, m, count);
         Profiler.End(vblank);
+        PresentOnce();
         c.V0 = 0;
+    }
+
+    // One present per VSync call. The vblank wait above is the pace, so the host
+    // ceiling must not add another frame afterwards. Cleared if PresentFrame
+    // throws before Throttle runs.
+    private static void PresentOnce()
+    {
+        LastWaitMs = Interrupts.ClockMs;
+        FrameClock.SkipNextThrottle = true;
+        try
+        {
+            Runtime.PresentFrame();
+        }
+        finally
+        {
+            FrameClock.SkipNextThrottle = false;
+        }
+    }
+
+    // _vcount at the previous VSync(mode >= 0) return. The first call has no
+    // previous return: the anchor is taken after the opening catch-up, and that
+    // call waits for a full quota.
+    private static int _syncAnchor;
+    private static bool _syncAnchored;
+
+    private static void WaitVBlankQuota(CpuContext c, IMemory m, int count)
+    {
+        AdvanceVBlanks(c, m);
+        if (!_syncAnchored)
+        {
+            _syncAnchor = _vcount;
+            _syncAnchored = true;
+        }
+
+        var target = (long)_syncAnchor + count;
+        while (_vcount < target)
+        {
+            // One grid step, then the vblank IRQ and the BIOS events on it.
+            // Sleeping the whole quota at once would hold those off until the end.
+            // LastWaitMs stays fresh so a flip during a long quota (VSync(60))
+            // does not take a second present.
+            LastWaitMs = Interrupts.ClockMs;
+            SleepUntilNextVBlank();
+            AdvanceVBlanks(c, m);
+            Interrupts.PollNow(c, m);
+        }
+
+        _syncAnchor = _vcount;
+    }
+
+    private static void SleepUntilNextVBlank()
+    {
+        if (!_timelineStarted) return;
+
+        var remaining = _nextVBlankMs - VBlankClock.Elapsed.TotalMilliseconds;
+        if (remaining <= 0) return;
+
+        if (remaining > SleepMarginMs)
+        {
+            var ms = (int)(remaining - SleepMarginMs);
+            if (ms > 0) Thread.Sleep(ms);
+        }
+        else
+        {
+            Thread.SpinWait(64);
+        }
     }
 
     //0091. A game that waits for its vblank handler without calling VSync gets its
@@ -237,6 +297,7 @@ public static class LibEtc
 
         while (Interrupts.VBlankCount < target)
         {
+            LastWaitMs = Interrupts.ClockMs;
             if (Interrupts.Turbo)
             {
                 Interrupts.ForceVBlank(c, m);

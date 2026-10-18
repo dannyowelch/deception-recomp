@@ -134,6 +134,10 @@ internal static class FrameClock
 
     public static double LastWaitMs { get; private set; }
 
+    // Set by LibEtc around the one present of a waiting VSync. That call already
+    // slept on the vblank grid, so this ceiling must not add another frame.
+    internal static bool SkipNextThrottle;
+
     public static void Throttle()
     {
         //0045.
@@ -144,6 +148,14 @@ internal static class FrameClock
 
     private static void ThrottleCore()
     {
+        if (SkipNextThrottle)
+        {
+            SkipNextThrottle = false;
+            _nextFrameMs = Now;
+            LastWaitMs = 0;
+            return;
+        }
+
         var now = Now;
 
         var frameMs = CeilingMs;
