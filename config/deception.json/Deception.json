@@ -1,0 +1,133 @@
+{
+  "game": {
+    "id": "slus-00340",
+    "name": "Deception",
+    "output": "../generated"
+  },
+  "cue": "d:/CHDStudio/Input/Tecmo\u0027s Deception - Invitation to Darkness (USA).chd",
+  "funcMap": "funcmaps/main.json",
+  "linearSweep": true,
+  "patches": [
+    { "overlay": "main", "address": "0x8015B5C8",
+      "target": "RecompOne.Runtime.Sdk.LibEtc.VSync", "mode": "replace" },
+    { "overlay": "main", "address": "0x8015FE30",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdSync", "mode": "replace" },
+    { "overlay": "main", "address": "0x8015F03C",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdInit", "mode": "replace" },
+    { "overlay": "main", "address": "0x80161DA0",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdRead", "mode": "replace" },
+    { "overlay": "main", "address": "0x8015F300",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdControl", "mode": "replace" },
+    { "overlay": "main", "address": "0x8015F438",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdControlF", "mode": "replace" },
+    { "overlay": "main", "address": "0x8015F564",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdControlB", "mode": "replace" },
+    { "overlay": "main", "address": "0x80161EA8",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdReadSync", "mode": "replace" },
+    { "overlay": "main", "address": "0x8015F00C",
+      "target": "RecompOne.Runtime.Sdk.LibCdStream.StSetRing", "mode": "replace" },
+    { "overlay": "main", "address": "0x80162040",
+      "target": "RecompOne.Runtime.Sdk.LibCdStream.StClearRing", "mode": "replace" },
+    { "overlay": "main", "address": "0x801620A0",
+      "target": "RecompOne.Runtime.Sdk.LibCdStream.StUnSetRing", "mode": "replace" },
+    { "overlay": "main", "address": "0x801621E8",
+      "target": "RecompOne.Runtime.Sdk.LibCdStream.StSetStream", "mode": "replace" },
+    { "overlay": "main", "address": "0x80162270",
+      "target": "RecompOne.Runtime.Sdk.LibCdStream.StFreeRing", "mode": "replace" },
+    { "overlay": "main", "address": "0x8016236C",
+      "target": "RecompOne.Runtime.Sdk.LibCdStream.StGetNext", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x80048FEC",
+      "target": "RecompOne.Runtime.Sdk.LibEtc.VSync", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x80048E38",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdReadSync", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x80046280",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdControl", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x800463B8",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdControlF", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x800464E4",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdControlB", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x80046DB0",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdSync", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x80048D30",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdRead", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x80045FAC",
+      "target": "RecompOne.Runtime.Sdk.LibCd.CdInit", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x80049240",
+      "target": "RecompOne.Runtime.Sdk.LibApi.DMACallback", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x8002B284",
+      "target": "RecompOne.Runtime.Sdk.LibGpu.DrawSync", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x8002B85C",
+      "target": "RecompOne.Runtime.Sdk.LibGpu.PutDrawEnv", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x8002BA34",
+      "target": "RecompOne.Runtime.Sdk.LibGpu.PutDispEnv", "mode": "replace" },
+    { "overlay": "kokumei", "address": "0x8002B7E8",
+      "target": "RecompOne.Runtime.Sdk.LibGpu.DrawOTag", "mode": "replace" }
+  ],
+  "overlays": [
+    {
+      "name": "kokumei",
+      "funcMap": "funcmaps/kokumei.json",
+      "base": "0x80010000",
+      "file": "KOKUMEI.EXE",
+      "skip": 2048,
+      "functions": [
+        {
+          "address": "800288A4"
+        }
+      ]
+    },
+    {
+      "name": "bin_3dmd",
+      "funcMap": "funcmaps/bin_3dmd.json",
+      "base": "0x800B3578",
+      "file": "KOKUMEI/BIN/3DMD.BIN",
+      "linearSweep": true
+    },
+    {
+      "name": "enty",
+      "funcMap": "funcmaps/enty.json",
+      "base": "0x800B3578",
+      "file": "KOKUMEI/BIN/ENTY.BIN",
+      "linearSweep": true
+    },
+    {
+      "name": "open",
+      "funcMap": "funcmaps/open.json",
+      "base": "0x80024000",
+      "file": "KOKUMEI/BIN/OPEN.BIN",
+      "linearSweep": true
+    },
+    {
+      "name": "plan",
+      "funcMap": "funcmaps/plan.json",
+      "base": "0x800B3578",
+      "file": "KOKUMEI/BIN/PLAN.BIN",
+      "linearSweep": true,
+      "functions": [ { "address": "800E1258" } ]
+    },
+    {
+      "name": "staff",
+      "funcMap": "funcmaps/staff.json",
+      "base": "0x80120100",
+      "file": "STAFF.EXE",
+      "skip": 2048,
+      "functions": [
+        {
+          "address": "8016CC18"
+        }
+      ]
+    },
+    {
+      "name": "title",
+      "funcMap": "funcmaps/title.json",
+      "base": "0x80120100",
+      "file": "TITLE.EXE",
+      "skip": 2048,
+      "functions": [
+        {
+          "address": "801483A4"
+        }
+      ]
+    }
+  ]
+}

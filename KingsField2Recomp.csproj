@@ -40,6 +40,7 @@
     -->
     <ItemGroup>
         <Compile Remove="tools/**" />
+        <Compile Remove="patches/**" />
         <EmbeddedResource Remove="tools/**" />
         <None Remove="tools/**" />
     </ItemGroup>

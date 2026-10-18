@@ -3513,22 +3513,7 @@
     {
       "address": "0x80042614",
       "name": "func_80042614",
-      "size": 1068
-    },
-    {
-      "address": "0x80042A40",
-      "name": "func_80042A40",
-      "size": 4
-    },
-    {
-      "address": "0x80042A44",
-      "name": "func_80042A44",
-      "size": 116
-    },
-    {
-      "address": "0x80042AB8",
-      "name": "func_80042AB8",
-      "size": 192
+      "size": 1380
     },
     {
       "address": "0x80042B78",
