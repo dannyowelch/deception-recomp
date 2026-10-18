@@ -148,6 +148,18 @@ the write that lands it in RAM activates it (`NotifyWrite`) — which only works
 because the HLE `CdRead`/`CdGetSector` call `LoadByLba` per sector and write
 through `PSMemory`.
 
+The match is that start LBA and nothing else. `Register` stores `LbaStart`, and
+`LoadByLba` returns on a miss, so the sector count, the destination and a file
+offset never identify a load. `CdRead` also tries `lba+i` for every sector of
+the transfer, which means a read that begins inside the file never includes the
+key. `LbaStart` is the ISO 9660 extent (`DiscFs.Locate`, plus
+`(Offset+Skip)/2048`; a headerless BIN uses skip 0). LibCd keeps the pending
+Setloc in the drive position until `CdRead`, `ReadN`, `ReadS`, `Play` or `Seek`
+takes it. The XA pacer otherwise advances that position while `_readActive` is
+already false: a 203-sector read of `3DMD.BIN` (extent 41756, 416128 bytes) was
+logged at 41762, six sectors into the same file, and the slot never went
+pending.
+
 Every module now takes `skip: 0` and its own load address as `base`, so the
 overlay covers the header table as well as the code. The reason is in "The sweep
 splits a switch" below: the words past the header's 32 dispatch slots are the
