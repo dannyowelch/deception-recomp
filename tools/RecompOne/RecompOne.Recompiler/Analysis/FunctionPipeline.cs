@@ -170,6 +170,7 @@ public static class FunctionPipeline
         if (instrs.Length == 0) return;
 
         var codeEnd = instrs[^1].Vram + 4;
+        var starts = new HashSet<uint>(funcs.Select(f => f.Start));
         var grown = 0;
 
         foreach (var func in funcs)
@@ -178,11 +179,23 @@ public static class FunctionPipeline
 
             var limit = Math.Min(func.End + TableReach, codeEnd);
             var furthest = 0u;
+            var spilled = false;
+            var spilledOnlyStarts = true;
             foreach (var table in JumpTableAnalyzer.Analyze(func, elfInfo, limit))
             foreach (var entry in table.Entries)
+            {
                 if (entry > furthest)
                     furthest = entry;
+                if (entry < func.End) continue;
+                spilled = true;
+                // A pointer at another function is a call. Following it pulls that
+                // function's body into this one. A pointer that is not a start is
+                // still this function, and the body has to grow to cover it.
+                if (!starts.Contains(entry))
+                    spilledOnlyStarts = false;
+            }
 
+            if (spilled && spilledOnlyStarts) continue;
             if (furthest < func.End) continue;
 
             var before = func.End;
