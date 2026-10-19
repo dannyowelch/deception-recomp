@@ -130,21 +130,29 @@ public static class BindingTable
             : names.Length == 0 ? Localization.T("settings.input.unbound")
                                 : string.Join(" | ", names);
 
-        float plusW = ImGui.GetFrameHeight();
+        float side = ImGui.GetFrameHeight();
         float spacing = ImGui.GetStyle().ItemSpacing.X;
-        if (ImGui.Button($"{text}##k{i}", new System.Numerics.Vector2(-plusW - spacing, 0)))
+        if (ImGui.Button($"{text}##k{i}", new System.Numerics.Vector2(-(side + spacing) * 2f, 0)))
         {
             remapRow = i;
             remapAdd = false;
         }
         ImGui.SameLine();
-        if (ImGui.Button($"+##kadd{i}", new System.Numerics.Vector2(plusW, 0)))
+        if (ImGui.Button($"+##kadd{i}", new System.Numerics.Vector2(side, 0)))
         {
             remapRow = i;
             remapAdd = true;
         }
+        ImGui.SameLine();
+        bool cleared = ImGui.Button($"-##kclr{i}", new System.Numerics.Vector2(side, 0));
+        if (cleared)
+        {
+            row.SetKey(keys, []);
+            remapRow = -1;
+            ConfigManager.SaveGame();
+        }
 
-        if (!awaiting) return;
+        if (!awaiting || cleared) return;
 
         if (GetPressedKey() is not { } pressed) return;
         if (remapAdd)
@@ -169,21 +177,29 @@ public static class BindingTable
             : bindings.Length == 0 ? Localization.T("settings.input.unbound")
                                    : string.Join(" | ", bindings.Select(PadLabel));
 
-        float plusW = ImGui.GetFrameHeight();
+        float side = ImGui.GetFrameHeight();
         float spacing = ImGui.GetStyle().ItemSpacing.X;
-        if (ImGui.Button($"{text}##p{i}", new System.Numerics.Vector2(-plusW - spacing, 0)))
+        if (ImGui.Button($"{text}##p{i}", new System.Numerics.Vector2(-(side + spacing) * 2f, 0)))
         {
             remapRow = i;
             remapAdd = false;
         }
         ImGui.SameLine();
-        if (ImGui.Button($"+##add{i}", new System.Numerics.Vector2(plusW, 0)))
+        if (ImGui.Button($"+##add{i}", new System.Numerics.Vector2(side, 0)))
         {
             remapRow = i;
             remapAdd = true;
         }
+        ImGui.SameLine();
+        bool cleared = ImGui.Button($"-##pclr{i}", new System.Numerics.Vector2(side, 0));
+        if (cleared)
+        {
+            row.SetPad(pad, []);
+            remapRow = -1;
+            ConfigManager.SaveGame();
+        }
 
-        if (!awaiting) return;
+        if (!awaiting || cleared) return;
 
         // InputManager is internal, so this and IsPadConnected are reached through
         // HostWindow, the same way the mouse is.

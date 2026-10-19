@@ -444,22 +444,31 @@ internal sealed class InputSettingsSection : ISettingsSection
                         ? Localization.T("settings.input.unbound")
                         : string.Join(" | ", bindings.Select(PadLabel));
 
-                var plusW = ImGui.GetFrameHeight();
+                var side = ImGui.GetFrameHeight();
                 var spacing = ImGui.GetStyle().ItemSpacing.X;
-                if (ImGui.Button($"{text}##p{i}", new Vector2(-plusW - spacing, 0)))
+                if (ImGui.Button($"{text}##p{i}", new Vector2(-(side + spacing) * 2f, 0)))
                 {
                     _remapRow = i;
                     _remapAdd = false;
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button($"+##add{i}", new Vector2(plusW, 0)))
+                if (ImGui.Button($"+##add{i}", new Vector2(side, 0)))
                 {
                     _remapRow = i;
                     _remapAdd = true;
                 }
 
-                if (awaiting)
+                ImGui.SameLine();
+                var cleared = ImGui.Button($"-##pclr{i}", new Vector2(side, 0));
+                if (cleared)
+                {
+                    setPad(pad, []);
+                    _remapRow = -1;
+                    ConfigManager.SaveGame();
+                }
+
+                if (awaiting && !cleared)
                 {
                     var p = InputManager.GetFirstPressedPadButton(_padIndex);
                     if (p.HasValue)
@@ -487,22 +496,31 @@ internal sealed class InputSettingsSection : ISettingsSection
                         ? Localization.T("settings.input.unbound")
                         : string.Join(" | ", names);
 
-                var plusW = ImGui.GetFrameHeight();
+                var side = ImGui.GetFrameHeight();
                 var spacing = ImGui.GetStyle().ItemSpacing.X;
-                if (ImGui.Button($"{text}##k{i}", new Vector2(-plusW - spacing, 0)))
+                if (ImGui.Button($"{text}##k{i}", new Vector2(-(side + spacing) * 2f, 0)))
                 {
                     _remapRow = i;
                     _remapAdd = false;
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button($"+##kadd{i}", new Vector2(plusW, 0)))
+                if (ImGui.Button($"+##kadd{i}", new Vector2(side, 0)))
                 {
                     _remapRow = i;
                     _remapAdd = true;
                 }
 
-                if (awaiting)
+                ImGui.SameLine();
+                var cleared = ImGui.Button($"-##kclr{i}", new Vector2(side, 0));
+                if (cleared)
+                {
+                    setKey(keys, []);
+                    _remapRow = -1;
+                    ConfigManager.SaveGame();
+                }
+
+                if (awaiting && !cleared)
                 {
                     var p = GetPressedKey();
                     if (p != null)
