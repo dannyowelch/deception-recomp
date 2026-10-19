@@ -254,6 +254,7 @@ public static class LibGpu
         var gpu = Runtime.Gpu;
         if (gpu == null)
         {
+            SaveDeceptionDrawEnv(m, c.A0);
             c.V0 = c.A0;
             return;
         }
@@ -322,7 +323,35 @@ public static class LibGpu
             Event.Dispatch(e);
         }
 
+        SaveDeceptionDrawEnv(m, c.A0);
         c.V0 = c.A0;
+    }
+
+    // Original PutDrawEnv (0x8002B8F0) copies 0x5C bytes from the argument to
+    // 0x8005B380. GetDrawEnv reads that static. The addresses are Deception's.
+    private static void SaveDeceptionDrawEnv(IMemory m, uint src)
+    {
+        if (!IsSlus00340()) return;
+        CopyGuest(m, src, 0x8005B380u, 0x5C);
+    }
+
+    // Original PutDispEnv (0x8002BEAC) copies 0x14 bytes from the argument to
+    // 0x8005B3DC. GetDispEnv (0x8002BEE4) reads that static.
+    private static void SaveDeceptionDispEnv(IMemory m, uint src)
+    {
+        if (!IsSlus00340()) return;
+        CopyGuest(m, src, 0x8005B3DCu, 0x14);
+    }
+
+    private static bool IsSlus00340()
+    {
+        return Assets.AssetApi.GameId.Equals("SLUS-00340", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void CopyGuest(IMemory m, uint src, uint dst, int length)
+    {
+        for (var i = 0; i < length; i++)
+            m.WriteU8(dst + (uint)i, m.ReadU8(src + (uint)i));
     }
     
     private static int _videoMode = -1;
@@ -366,6 +395,7 @@ public static class LibGpu
         var gpu = Runtime.Gpu;
         if (gpu == null)
         {
+            SaveDeceptionDispEnv(m, c.A0);
             c.V0 = c.A0;
             return;
         }
@@ -439,6 +469,7 @@ public static class LibGpu
             Event.Dispatch(e);
         }
 
+        SaveDeceptionDispEnv(m, c.A0);
         c.V0 = c.A0;
     }
 
