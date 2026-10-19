@@ -31,9 +31,9 @@ per-user recompile reads those LBAs off the player's own image.
 | project | builds without the disc | what it is |
 |---|---|---|
 | `Verdite2.Launcher/Verdite2.Launcher.csproj` | **yes** | the shipped executable |
-| `KingsField2Recomp.csproj` | no | the developer path, unchanged |
+| `Deception.csproj` | no | the developer path, unchanged |
 
-They are opposites on purpose. `KingsField2Recomp.csproj` compiles `generated/`
+They are opposites on purpose. `Deception.csproj` compiles `generated/`
 and `patches/` through the SDK's default globs, which is what makes iteration
 incremental and is why nothing about the developer workflow changed. The launcher
 compiles neither: it carries them as *payload* and compiles them at first run.
@@ -96,7 +96,7 @@ a few-KB .NET Framework 4.8 executable at the install root
 launches `bin\Verdite2.exe`. Shortcuts, Inno's icon and `UninstallDisplayIcon`
 all point at the stub. It is a nested project, so building it leaves `obj/`
 AssemblyInfo under the game project's tree, inside `tools/**`, which
-`KingsField2Recomp.csproj` removes for that CS0579 reason. `Paths.Install` looks one directory up when `content/` is
+`Deception.csproj` removes for that CS0579 reason. `Paths.Install` looks one directory up when `content/` is
 not next to the apphost, which is how a developer run and the AppImage (payload
 still beside the executable) keep working. The zip and the install directory look like:
 
@@ -216,7 +216,7 @@ port's 22k lines lose `System`, `System.Linq` and the rest, and fail in hundreds
 of places that read as the port being broken rather than as a missing file.
 
 More generally: **the compilation options in `GameCompile` and the properties in
-`KingsField2Recomp.csproj` are two statements of one thing and must stay in step.**
+`Deception.csproj` are two statements of one thing and must stay in step.**
 A difference between them is a class of bug that only exists in the release. The
 port's own notes record what losing the frame boundary looks like, and it is not a
 crash — it is the whole game running fast from the title onward, silently. The
@@ -400,7 +400,7 @@ release exists to update to.
   stays skipped. To see a skipped release again, delete `skipped` from
   `update.json`.
 
-Only the launcher checks. The developer path (`KingsField2Recomp.csproj`) never
+Only the launcher checks. The developer path (`Deception.csproj`) never
 reaches GitHub.
 
 Measured with a launcher stamped `0.3.0` (`-p:Version=0.3.0`) against the

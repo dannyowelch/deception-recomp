@@ -4,7 +4,7 @@
       The shipped executable: Verdite Core's launcher (tools/verdite-core/launcher)
       under this port's names, with Program.cs handing it the one record it needs.
       Everything else - the payload, the version stamp, the build options that must
-      match KingsField2Recomp.csproj - is in Launcher.targets, shared with the other
+      match Deception.csproj - is in Launcher.targets, shared with the other
       ports. See docs/PACKAGING.md.
     -->
     <PropertyGroup>

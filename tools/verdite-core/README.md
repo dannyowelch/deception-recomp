@@ -99,7 +99,7 @@ Its one source file hands `Launcher.Run` a `LauncherGame`:
 | `Name`, `AppId` | `Verdite2`, `verdite2` | `Verdite3`, `verdite3` |
 | `GameTitle`, `Serial` | `King's Field`, `SLUS-00158` | `King's Field II`, `SLUS-00255` |
 | `WrongDiscs` | `SLUS-00255` and what to say | `SLUS-00158` and what to say |
-| `RecompilerConfig`, `GameAssembly` | `kf2.json`, `KingsField2` | `kf3.json`, `KingsField3` |
+| `RecompilerConfig`, `GameAssembly` | `kf2.json`, `Deception` | `kf3.json`, `KingsField3` |
 | `UpdateRepository` | `Voicedrew11/verdite2` | `Voicedrew11/verdite3` |
 | `PlayAfter` | `open`/`game` the title, `end`/`fdat*` play | the same |
 

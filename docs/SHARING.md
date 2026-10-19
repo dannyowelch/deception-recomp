@@ -182,7 +182,7 @@ relative path and SHA-256. Not the LBAs, the commit or the informational
 version. **A shared subtree compiled into the game has to land under
 `content/src`, or a change to it will not trigger a rebuild.**
 
-What `GameCompile` assumes, which `KingsField2Recomp.csproj` must keep matching:
+What `GameCompile` assumes, which `Deception.csproj` must keep matching:
 assembly `KingsField2`, a console application, unsafe on, nullable on, Release
 optimisation, AnyCPU, every warning suppressed but CS5001 (an error), references
 from `TRUSTED_PLATFORM_ASSEMBLIES` plus loaded assemblies, and a generated
@@ -226,7 +226,7 @@ needs a frame boundary.
 | `merge_branch_spans.py` | B | `disc/KingsField2.cue` and `config/kf2.json` as defaults: now from `config/verdite.json`; **moved to Verdite Core in Phase 2** |
 | `merge_sdk_names.py` | B | `OVERLAYS = ("open", "game", "end")`, now `sdkOverlays` in `config/verdite.json`; **moved to Verdite Core in Phase 2** |
 | `callgraph.py` | B | the generated class prefix `KingsField2(_\w+)?`, `generated/`, `config/funcmaps/` |
-| `kf2run.py` | B | `KingsField2Recomp.csproj`, `bin/Release/net10.0/KingsField2`, `disc/KingsField2.cue` |
+| `kf2run.py` | B | `Deception.csproj`, `bin/Release/net10.0/Deception`, `disc/KingsField2.cue` |
 | `profile_report.py`, `audio_spectrum.py` | B | none of substance |
 | `match_overlays.py` | C | a 17-entry libgpu seed table in `open`, the overlay names; the delta algorithm is generic |
 | `find_writers.py`, `check_gate.py`, `rate_census.py`, `rate_matrix.py` | C | the main-loop model through `kf2model.py`; `rate_*` add RAM addresses (object table, death counter, needle) and scenario drivers |
@@ -358,7 +358,7 @@ nothing in it survives the change of game.
   `patches/` plus `mods/` 80. Shared code must take the prefix from the game, and
   every name must survive unchanged in Verdite2.
 - **The `KingsField2` names.** Assembly `KingsField2`, project
-  `KingsField2Recomp.csproj`, the generated classes `Recompiled.KingsField2_game`,
+  `Deception.csproj`, the generated classes `Recompiled.KingsField2_game`,
   `_open`, `_end`, `_fdat`, `_main`, the process name `KingsField2` (which
   `pkill` and `dotnet-stack` find), `KingsField2Mcp`.
 - **The namespace `Kf2`** (patches), `Kf2.Mcp`, `Kf2.Mods.*`, and the
@@ -663,7 +663,7 @@ and `v0.4.0-staging` (both `d03ac2c`, fast-forwards).
   wrote to `config/funcmaps`.
 - `--push-fork` against a scratch bare copy of the fork: "Everything up-to-date",
   so the split from this branch is `a617cf8` and carries no game commit.
-- `dotnet build KingsField2Recomp.csproj -c Release`: 0 errors;
+- `dotnet build Deception.csproj -c Release`: 0 errors;
   `packaging/linux/build-appimage.sh`: exit 0. The game was not run: the only
   runtime change is comments and the patch record's location.
 
@@ -822,7 +822,7 @@ KF3_FPS=144 KF3_FPS_PROBE=1`: `open → game → fdat02`, slot 1, HP 50/50, LV 1
   it from stage 3; Verdite3 answers the start menu's own question), and
   `FramePacing` (above, "Corrections"). They stay per game.
 - **Extracting the first group is the first C# Verdite Core would hold**, and
-  Verdite2 compiles its patches twice: in `KingsField2Recomp.csproj` and in the
+  Verdite2 compiles its patches twice: in `Deception.csproj` and in the
   launcher's first-run `GameCompile`, whose payload and `BuildKey` would have to
   carry `tools/verdite-core` sources too. That is a launcher change, and
   `Kf2.AgentServer` is mod-visible. I stopped there to ask rather than make it.
@@ -1464,8 +1464,8 @@ in each game like the other bring-up scripts. Python, reading the game through
 ```json
 "check": {
   "tag": "KF2",
-  "project": "KingsField2Recomp.csproj",
-  "binary": "bin/Release/net10.0/KingsField2",
+  "project": "Deception.csproj",
+  "binary": "bin/Release/net10.0/Deception",
   "env": { "KF2_AUTOSTART": "2", "KF2_AGENT": "1", "KF2_FPS": "144",
            "KF2_FPS_PROBE": "1", "KF2_PRESENT_PROBE": "1" },
   "seconds": 70,

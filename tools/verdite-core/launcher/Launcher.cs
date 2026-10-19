@@ -111,6 +111,7 @@ public static class Launcher
             }
 
             var gameDll = Path.Combine(Paths.Builds, BuildKey.Compute(discPath), game.GameAssembly + ".dll");
+            KeepPreviousBuild(gameDll);
 
             // The first-run setup, shown while the game builds when there is a build
             // to wait for, and on its own when there is not (a spec raised past the
@@ -156,6 +157,38 @@ public static class Launcher
       }
     }
     """;
+
+    /// <summary>
+    /// Copy a build cached under a previous assembly name onto
+    /// <paramref name="gameDll"/> when that file is not there yet.
+    /// The old dll stays.
+    /// </summary>
+    static void KeepPreviousBuild(string gameDll)
+    {
+        if (File.Exists(gameDll)) return;
+        var dir = Path.GetDirectoryName(gameDll);
+        if (string.IsNullOrEmpty(dir)) return;
+
+        foreach (var old in Game.PreviousAssemblies)
+        {
+            if (string.IsNullOrWhiteSpace(old) || old == Game.GameAssembly) continue;
+            var src = Path.Combine(dir, old + ".dll");
+            if (!File.Exists(src)) continue;
+            try
+            {
+                File.Copy(src, gameDll);
+                var pdbSrc = Path.ChangeExtension(src, ".pdb");
+                var pdbDst = Path.ChangeExtension(gameDll, ".pdb");
+                if (File.Exists(pdbSrc) && !File.Exists(pdbDst)) File.Copy(pdbSrc, pdbDst);
+                Console.WriteLine($"{Tag} migrated build cache {old}.dll -> {Path.GetFileName(gameDll)}");
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine($"{Tag} could not migrate {src}: {e.Message}");
+            }
+            return;
+        }
+    }
 
     /// <summary>
     /// Build the game assembly, with the window alive throughout.

@@ -6,8 +6,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <AssemblyName>KingsField2</AssemblyName>
-        <RootNamespace>KingsField2</RootNamespace>
+        <AssemblyName>Deception</AssemblyName>
+        <RootNamespace>Deception</RootNamespace>
         <!--
           QuickJit off: every method with no precompiled code is JIT-compiled once,
           fully optimised, and never tiered up. Tier-up recompiles a method, and

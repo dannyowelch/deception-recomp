@@ -26,7 +26,8 @@ return Launcher.Run(new LauncherGame
     },
 
     RecompilerConfig = "kf2.json",
-    GameAssembly = "KingsField2",
+    GameAssembly = "Deception",
+    PreviousAssemblies = ["KingsField2"],
     UpdateRepository = "Voicedrew11/verdite2",
 
     // OPEN.EXE, or GAME.EXE arriving afresh, is the title; an area module (the

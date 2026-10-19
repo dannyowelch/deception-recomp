@@ -130,7 +130,7 @@ internal static class Program
             ["instructions"] =
                 "Controls the running King's Field II port through its KF2_SHELL channel. " +
                 "Start the game first, e.g.: KF2_SHELL=1 KF2_AUTOSTART=2 dotnet run " +
-                "--project KingsField2Recomp.csproj -c Release -- disc/KingsField2.cue " +
+                "--project Deception.csproj -c Release -- disc/KingsField2.cue " +
                 "— until then every tool returns a connection error.",
         };
     }

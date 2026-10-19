@@ -163,7 +163,7 @@ disc/                    your own dump (gitignored)
 generated/               recompiler output (gitignored, derived from the disc)
 tools/RecompOne/         RecompOne, a subtree of the fork Voicedrew11/verdite-recompone
 Program.cs               hand-owned entry point
-KingsField2Recomp.csproj
+Deception.csproj
 ```
 
 ## The documents

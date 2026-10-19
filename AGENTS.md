@@ -61,8 +61,8 @@ bash scripts/setup_tools.sh          # build the recompiler (tools/RecompOne)
 # recompile MIPS -> C# into generated/ (~2234 functions, ~182k lines)
 dotnet run --project tools/RecompOne/RecompOne.Recompiler -c Release --no-build -- config/kf2.json
 
-dotnet build KingsField2Recomp.csproj -c Release
-dotnet run --project KingsField2Recomp.csproj -- disc/KingsField2.cue
+dotnet build Deception.csproj -c Release
+dotnet run --project Deception.csproj -- disc/KingsField2.cue
 ```
 
 `setup_tools.sh` builds; `--pull-fork [ref]` takes the fork's changes (ref defaults
@@ -119,7 +119,7 @@ logging.** Recompiled functions carry their MIPS address in their name, so the
 trace names the routine directly:
 
 ```bash
-~/.dotnet/tools/dotnet-stack report -p $(pgrep -f net10.0/KingsField2)
+~/.dotnet/tools/dotnet-stack report -p $(pgrep -f net10.0/Deception)
 ```
 
 Start the game from the same shell you run that in, or the diagnostic socket in
@@ -534,7 +534,7 @@ fail to load area modules on a differently mastered dump.
   (core's `GameCompile`). Its reference set comes from `TRUSTED_PLATFORM_ASSEMBLIES`, not
   loaded assemblies, and it supplies `GlobalUsings.g.cs` itself, since
   `ImplicitUsings` is an SDK feature.
-- **`GameCompile`'s options and `KingsField2Recomp.csproj`'s properties are two
+- **`GameCompile`'s options and `Deception.csproj`'s properties are two
   statements of one thing and must stay in step** — a difference is a bug that
   exists only in the release. Check the packaged binary with
   `KF2_FPS=144 KF2_FPS_PROBE=1`: 144.0 fps drawn at 15.0 ticks/s.
@@ -546,7 +546,7 @@ fail to load area modules on a differently mastered dump.
   `packaging/windows/build-windows.ps1`, neither of which needs the disc.
   **Trimming is off and must stay off** (MonoMod detours, Roslyn, `AutoStart`'s
   reflection).
-- **QuickJit is off and must stay off, in both `KingsField2Recomp.csproj` and
+- **QuickJit is off and must stay off, in both `Deception.csproj` and
   `Verdite2.Launcher.csproj`** (`TieredCompilationQuickJit`). Tier-up recompiles a
   hooked method and MonoMod's detour does not reliably follow, so a committed hook
   stops firing for the session with `IsCommitted` still true — that was the boot

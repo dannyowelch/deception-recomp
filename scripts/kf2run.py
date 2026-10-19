@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-EXE_MATCH = "bin/Release/net10.0/KingsField2"
+EXE_MATCH = "bin/Release/net10.0/Deception"
 PORT = 27900
 
 
@@ -112,7 +112,7 @@ def launch(env: dict[str, str], log: Path, extra_args: list[str] | None = None) 
     full.update(env)
 
     cmd = [
-        "dotnet", "run", "--project", "KingsField2Recomp.csproj",
+        "dotnet", "run", "--project", "Deception.csproj",
         "-c", "Release", "--no-build", "--", "disc/KingsField2.cue",
     ] + (extra_args or [])
 

@@ -36,8 +36,15 @@ public sealed record LauncherGame
     /// <summary>The recompiler config in content/config, <c>kf2.json</c>.</summary>
     public required string RecompilerConfig { get; init; }
 
-    /// <summary>The game assembly, as its csproj names it: <c>KingsField2</c>.</summary>
+    /// <summary>The game assembly, as its csproj names it: <c>Deception</c>.</summary>
     public required string GameAssembly { get; init; }
+
+    /// <summary>
+    /// Earlier assembly names for this port. A cached build dll under one of
+    /// these names is copied to <see cref="GameAssembly"/> when that file is
+    /// missing. The old file is left in place.
+    /// </summary>
+    public IReadOnlyList<string> PreviousAssemblies { get; init; } = [];
 
     /// <summary>The GitHub repository releases are announced from, <c>owner/name</c>.</summary>
     public required string UpdateRepository { get; init; }

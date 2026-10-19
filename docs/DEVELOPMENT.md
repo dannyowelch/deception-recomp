@@ -90,8 +90,8 @@ dotnet run --project tools/RecompOne/RecompOne.Recompiler -c Release --no-build 
 ## Build and run
 
 ```bash
-dotnet build KingsField2Recomp.csproj -c Release
-dotnet run --project KingsField2Recomp.csproj -- disc/KingsField2.cue
+dotnet build Deception.csproj -c Release
+dotnet run --project Deception.csproj -- disc/KingsField2.cue
 ```
 
 The runtime needs the cue at play time as well as at recompile time; pass it as
@@ -211,7 +211,7 @@ it is spinning in — no logging, no rebuild, no reproduction in a debugger:
 
 ```bash
 dotnet tool install -g dotnet-stack        # once
-~/.dotnet/tools/dotnet-stack report -p $(pgrep -f net10.0/KingsField2)
+~/.dotnet/tools/dotnet-stack report -p $(pgrep -f net10.0/Deception)
 ```
 
 This is the fastest tool in the box for a silent hang. It is what identified
@@ -298,7 +298,7 @@ five seconds, and `KF2_PROFILE_OUT=profile.csv` writes every frame for
 
 ```bash
 KF2_AUTOSTART=2 KF2_FPS=144 KF2_PROFILE=1 KF2_PROFILE_OUT=profile.csv \
-    dotnet run --project KingsField2Recomp.csproj -c Release -- disc/KingsField2.cue
+    dotnet run --project Deception.csproj -c Release -- disc/KingsField2.cue
 python3 scripts/profile_report.py profile.csv --skip 30      # drop boot and first-hit JIT
 ```
 
@@ -769,7 +769,7 @@ what matches a row to something in a screenshot:
 
 ```bash
 KF2_AUTOSTART=2 KF2_FPS=144 KF2_FRAMEVIEW_CAPTURE=25,35 KF2_FRAMEVIEW_OUT=captures \
-    dotnet run --project KingsField2Recomp.csproj -c Release -- disc/KingsField2.cue
+    dotnet run --project Deception.csproj -c Release -- disc/KingsField2.cue
 ```
 
 **What is recorded.** From stage 13's pre-hook to its post: every word written to

@@ -92,5 +92,5 @@ jobs:
       - name: Build the Windows stub
         run: dotnet build tools/verdite-core/packaging/windows/Stub/Verdite.Stub.csproj -c Release -p:StubName=Verdite2
 
-      # KingsField2Recomp.csproj is deliberately NOT built here: it compiles
+      # Deception.csproj is deliberately NOT built here: it compiles
       # generated/ and so cannot build without the disc, by design.

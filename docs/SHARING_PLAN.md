@@ -73,7 +73,7 @@ Also record what's game-specific in the *infrastructure*: the `KF2_` prefix, `Ki
 
 ### End state
 - A standalone fork repo whose history shares ancestry with upstream at the sha in `tools/RecompOne/UPSTREAM`.
-- Verdite2 consumes it via `git subtree` at the **same prefix, `tools/RecompOne`**, so no `ProjectReference` path in `KingsField2Recomp.csproj` or `Verdite2.Launcher/Verdite2.Launcher.csproj` changes. If you're editing one, stop.
+- Verdite2 consumes it via `git subtree` at the **same prefix, `tools/RecompOne`**, so no `ProjectReference` path in `Deception.csproj` or `Verdite2.Launcher/Verdite2.Launcher.csproj` changes. If you're editing one, stop.
 - `git diff <branch-base> HEAD -- tools/RecompOne` is **empty**. This is a move, not a change: no upstream harvest, no reformat, no fixes.
 
 ### Building the fork's history

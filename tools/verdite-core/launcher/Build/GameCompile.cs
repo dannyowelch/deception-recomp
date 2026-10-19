@@ -22,7 +22,7 @@ namespace Verdite.Launcher.Build;
 /// about fifteen seconds, once.
 ///
 /// The options below MUST stay in step with the game's own csproj (the developer
-/// path, KingsField2Recomp.csproj and its kind), which compiles these same
+/// path, Deception.csproj and its kind), which compiles these same
 /// sources. A difference between the two
 /// is a class of bug that only appears in the release: the port's own notes record
 /// what losing the frame boundary looks like, and it is not a crash -- it is the

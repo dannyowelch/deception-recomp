@@ -2699,7 +2699,7 @@ Line counts from the checked-out files. Addresses in the code's own naming.
 - RecompOne deps: none.
 - Mod-visible: none (Python client); the `KF2_SHELL` protocol is the runtime module's.
 - Imports from scripts: none.
-- Hardcodes specific to this game/repo: `REPO`; `EXE_MATCH = "bin/Release/net10.0/KingsField2"`; `PORT = 27900`; project `KingsField2Recomp.csproj`; cue `disc/KingsField2.cue`; env `KF2_SHELL`, `KF2_AUTOSTART`; shell timeout 6.0 s; `pgrep -f`.
+- Hardcodes specific to this game/repo: `REPO`; `EXE_MATCH = "bin/Release/net10.0/Deception"`; `PORT = 27900`; project `Deception.csproj`; cue `disc/KingsField2.cue`; env `KF2_SHELL`, `KF2_AUTOSTART`; shell timeout 6.0 s; `pgrep -f`.
 - How to parameterise: executable match, port, project path, cue path and env prefix as constructor/CLI/module constants from a per-game JSON; `KF2_SHELL` prefix already a convention.
 
 ---
@@ -2916,7 +2916,7 @@ Key observations:
 ## The launcher, packaging, CI, mcp/, Program.cs, setup and release scripts
 Scope: everything under `Verdite2.Launcher/` (except its `bin/`, `obj/`),
 `packaging/` (linux/, windows/, shared/), `.github/workflows/*.yml`, `mcp/`,
-root `Program.cs`, `KingsField2Recomp.csproj`, `scripts/setup_tools.sh`,
+root `Program.cs`, `Deception.csproj`, `scripts/setup_tools.sh`,
 `scripts/release.sh`, `VERSION`, `.gitignore`. Read-only; nothing else touched.
 
 Overall: this whole layer is **bucket B** (game-agnostic infrastructure). What
@@ -3063,13 +3063,13 @@ Everything else in this layer is pure mechanism.
 #### Verdite2.Launcher/Build/GameCompile.cs (193 lines)
 - Bucket: B (high) -- Roslyn compile of generated code + port sources; one per-game string.
 - Does: parse `GlobalUsings.g.cs` (literal 7-global list, :111-119) + all `generatedDir/**/*.cs` ordinal + `Sources.All()` (`content/src/**/*.cs`); `CSharpCompilationOptions(ConsoleApplication)` with AllowUnsafe, Nullable enable, Optimization Release, Platform.AnyCpu, ConcurrentBuild, **all warnings suppressed except CS5001 = Error**; emit embedded debug info to `<dll>.tmp` then rename.
-- Assumes: `AssemblyName = "KingsField2"` (:32); references = host `TRUSTED_PLATFORM_ASSEMBLIES` plus loaded non-dynamic assemblies (raw metadata fallback), skipping `"recompone"` and `"Verdite2"` (:192).
+- Assumes: `AssemblyName = "Deception"` (:32); references = host `TRUSTED_PLATFORM_ASSEMBLIES` plus loaded non-dynamic assemblies (raw metadata fallback), skipping `"recompone"` and `"Verdite2"` (:192).
 - Payload source dirs: `content/src` (Program.cs + patches/**), `content/config` is **not** compiled here (it is the recompiler's input).
-- Game-specific: `AssemblyName = "KingsField2"`; comment names 15 static calls `Recompiled.KingsField2.func_XXXXXXXX` from AutoReload/AreaWarp/CullGrid; skip set names `Verdite2`.
+- Game-specific: `AssemblyName = "Deception"`; comment names 15 static calls `Recompiled.KingsField2.func_XXXXXXXX` from AutoReload/AreaWarp/CullGrid; skip set names `Verdite2`.
 - Env / settings keys: none.
 - RecompOne deps: `RecompOne.Runtime` must be in TPA/loaded so `using RecompOne.*` resolves; Roslyn kept because RecompOne.Runtime references it.
 - Mod-visible: none.
-- Split note: seam is the assembly name + the fact the port's `Program.cs` directly calls `Recompiled.<GameName>`. Must stay in step with `KingsField2Recomp.csproj` options.
+- Split note: seam is the assembly name + the fact the port's `Program.cs` directly calls `Recompiled.<GameName>`. Must stay in step with `Deception.csproj` options.
 
 #### Verdite2.Launcher/Build/Recompile.cs (133 lines)
 - Bucket: B (high) -- drives the recompiler in-process; one per-game config name.
@@ -3158,7 +3158,7 @@ Everything else in this layer is pure mechanism.
 
 #### .github/workflows/ci.yml (58 lines)
 - Bucket: B (high) -- asserts the shipped project builds with no disc.
-- Does: checkout; setup-dotnet 10.0.x; `bash scripts/setup_tools.sh` (vendored, clones nothing); assert VERSION is `MAJOR.MINOR.PATCH` and no literal `<Version>` in launcher csproj; `dotnet build Verdite2.Launcher/... -c Release`; assert assembly carries `$v+[0-9a-f]{9}` (grep strings of `Verdite2.dll`); build Windows stub. **Deliberately does not build `KingsField2Recomp.csproj`** (needs disc).
+- Does: checkout; setup-dotnet 10.0.x; `bash scripts/setup_tools.sh` (vendored, clones nothing); assert VERSION is `MAJOR.MINOR.PATCH` and no literal `<Version>` in launcher csproj; `dotnet build Verdite2.Launcher/... -c Release`; assert assembly carries `$v+[0-9a-f]{9}` (grep strings of `Verdite2.dll`); build Windows stub. **Deliberately does not build `Deception.csproj`** (needs disc).
 - Game-specific: launcher project path, `Verdite2.dll`, stub path.
 - Mod-visible: none.
 
@@ -3176,7 +3176,7 @@ Everything else in this layer is pure mechanism.
 - Bucket: B/C (high) -- plain stdio JSON-RPC 2.0 MCP server, no RecompOne reference; tool schemas are thin wrappers over KF2_SHELL.
 - Does: `initialize` (echoes protocol version; serverInfo `kf2-mcp`), `ping`, `tools/list`, `tools/call`. Serial stdin loop; one request in flight over TCP to shell; never kills the process on error. `ShellClient` connects 127.0.0.1:27900 default, 5 s connect / 10 s reply timeouts, no resend after send.
 - Tools exposed / shell verbs: `kf2_state`→`state`; `kf2_kill`→`kill`; `kf2_nearby`→`nearby [radius]`; `kf2_load_save`→`load <slot>`; `kf2_warp`→`warp <area>`; `kf2_press_button`→`press <button> [holdMs]`.
-- Game-specific: `instructions` string names "King's Field II port", `KF2_SHELL=1 KF2_AUTOSTART=2 dotnet run --project KingsField2Recomp.csproj -c Release -- disc/KingsField2.cue`; tool descriptions use 8192≈four tiles, area 0..7 ("beacon's area numbering"), save slots 1..3; namespace `Kf2.Mcp`; env var `KF2_MCP_ENDPOINT`.
+- Game-specific: `instructions` string names "King's Field II port", `KF2_SHELL=1 KF2_AUTOSTART=2 dotnet run --project Deception.csproj -c Release -- disc/KingsField2.cue`; tool descriptions use 8192≈four tiles, area 0..7 ("beacon's area numbering"), save slots 1..3; namespace `Kf2.Mcp`; env var `KF2_MCP_ENDPOINT`.
 - Env / settings keys: `KF2_MCP_ENDPOINT` (default `127.0.0.1:27900`).
 - RecompOne deps: none.
 - Mod-visible: none (separate process).
@@ -3282,10 +3282,10 @@ Everything else in this layer is pure mechanism.
 - Mod-visible: `Kf2.*` patch classes are in the game assembly; mods compile against it. Root Program.cs itself is not a type.
 - Split note: **This file is the seam in the other direction.** Everything from line 1 is KF2-specific. A second game needs its own `Program.cs` with its own `Kf2.*`/`GameName.*` patch set; the launcher does not care what is in `content/src` beyond compiling it. Only `Recompiled.<Assembly>` name and `Entry.Run` are structural.
 
-#### KingsField2Recomp.csproj (117 lines)
+#### Deception.csproj (117 lines)
 - Bucket: B/D (high) -- developer-path equivalent of GameCompile; compiles generated/ + patches/ via SDK globs; can only build with the disc.
 - Does: Exe net10.0, AllowUnsafe, Nullable, assembly `KingsField2`, root ns `KingsField2`, icon `packaging/shared/verdite2.ico`, `TieredCompilationQuickJit=false`, ProjectReference `RecompOne.Runtime`. Removes `tools/**`, `mods/**`, `mcp/**`, `Verdite2.Launcher/**`, `dist/**`, `packaging/**` from Compile/EmbeddedResource/None (CS0579/NETSDK1022 traps).
-- Game-specific: `AssemblyName=KingsField2`, RootNamespace, icon.
+- Game-specific: `AssemblyName=Deception`, RootNamespace, icon.
 - Mod-visible: none.
 - Split note: must stay in lockstep with GameCompile options (AssemblyName, AllowUnsafe, Nullable, Release, QuickJit).
 
@@ -3341,7 +3341,7 @@ Everything else in this layer is pure mechanism.
 
 1. **The launcher is already a reusable shell.** Good seam: `Build/{Paths,BuildKey,DiscCheck,GameCompile,Recompile}.cs` + `Program.cs` contain no KF2 addresses or RAM layouts; per-game differences are ~20 literals (the table at top). A second game = new `content/` + a data record.
 2. **Root `Program.cs` is the opposite: wholly D/C.** 75 `Install()` calls, ~205 `KF2_*` env reads, per-overlay IRQ tables and addresses. It is shipped as `content/src/Program.cs` but is not part of the shell; each game needs its own.
-3. **`GameCompile` and `KingsField2Recomp.csproj` must move together.** Same AssemblyName + options; a drift is a release-only bug (fast game, no crash).
+3. **`GameCompile` and `Deception.csproj` must move together.** Same AssemblyName + options; a drift is a release-only bug (fast game, no crash).
 4. **`BuildKey` deliberately excludes LBAs and commit**, but DOES include the game-specific disc-file list; a new game with different executable names / no `FDAT.T` must edit it.
 5. **`DiscCheck` is pure per-game data** behind a generic validator (serial, boot EXE, required files + floors, wrong-serial message, config name `kf2.json`).
 6. **`UpdatePopup` leaks the overlay naming convention** (`open`/`game`/`end`/`fdat*`) into a generic UI component -- the one C-coupling hidden in the launcher.
