@@ -511,6 +511,8 @@ public static class HostWindow
     public static void PumpEvents()
     {
         if (_headless || _window == null || !OnWindowThread) return;
+
+        ApplyMouseCaptureRequest();
         
         try
         {
@@ -770,13 +772,33 @@ public static class HostWindow
     // same role IsKeyDown already plays for the keyboard.
     public static bool MouseAvailable => InputManager.MouseAvailable;
 
+    // GLFW changes the cursor only on the thread that created the window. A guest
+    // hook asks from the game thread; the next pump applies it.
+    static int _mouseCaptureRequest = -1;
+
     /// <summary>Lock the pointer to the window and hide it, or give it back.
     /// Read it back after setting it: a platform that refuses the mode leaves
-    /// this false.</summary>
+    /// this false. A set from the game thread applies on the next pump.</summary>
     public static bool MouseCaptured
     {
         get => InputManager.MouseCaptured;
-        set => InputManager.MouseCaptured = value;
+        set
+        {
+            if (OnWindowThread)
+            {
+                InputManager.MouseCaptured = value;
+                return;
+            }
+
+            Volatile.Write(ref _mouseCaptureRequest, value ? 1 : 0);
+        }
+    }
+
+    static void ApplyMouseCaptureRequest()
+    {
+        var request = Interlocked.Exchange(ref _mouseCaptureRequest, -1);
+        if (request < 0) return;
+        InputManager.MouseCaptured = request != 0;
     }
 
     /// <summary>Whether the window has the desktop's focus. A captured pointer

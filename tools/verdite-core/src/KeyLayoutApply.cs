@@ -88,7 +88,7 @@ public static class KeyLayoutApply
 
             // {Tag}_KEYS=fps is an instruction, so it overrides both the marker
             // and a customised file for the run it is set in.
-            bool recognised = Matches(keys, new KeyBindings()) ||
+            bool recognised = Matches(keys, KeyBindings.Stock()) ||
                               _superseded.Any(old => Matches(keys, old));
             if (!_forced && (applied || !recognised)) return;
 
@@ -109,7 +109,7 @@ public static class KeyLayoutApply
     /// for, so the migration above does not undo it on the next launch.</summary>
     public static void ApplyStock()
     {
-        ConfigManager.Game.Keys = new KeyBindings();
+        ConfigManager.Game.Keys = KeyBindings.Stock();
         ConfigManager.SaveGame();
         _setApplied(_version);
     }
@@ -153,10 +153,5 @@ public static class KeyLayoutApply
         e.Buttons &= (ushort)~(ushort)((_extra >> 8) | (_extra << 8));
     };
 
-    static bool Matches(KeyBindings a, KeyBindings b) =>
-        a.Cross == b.Cross && a.Circle == b.Circle && a.Square == b.Square &&
-        a.Triangle == b.Triangle && a.L1 == b.L1 && a.R1 == b.R1 &&
-        a.L2 == b.L2 && a.R2 == b.R2 && a.L3 == b.L3 && a.R3 == b.R3 &&
-        a.Start == b.Start && a.Select == b.Select &&
-        a.Up == b.Up && a.Down == b.Down && a.Left == b.Left && a.Right == b.Right;
+    static bool Matches(KeyBindings a, KeyBindings b) => KeyBindings.Matches(a, b);
 }

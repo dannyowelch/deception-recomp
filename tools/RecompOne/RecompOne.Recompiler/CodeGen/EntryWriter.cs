@@ -28,6 +28,10 @@ public static class EntryWriter
         entry.AppendLine("        m.SetCd(cd);");
         foreach (var name in overlays)
             entry.AppendLine($"        Dispatcher.Register(\"{name}\", new {DispatchTableName(name)}());");
+        // generated/ is not committed. The walk detector resolves symbols only
+        // after Register, so a regen of this game has to keep the call.
+        if (className == "Deception")
+            entry.AppendLine("        Deception.InputSupport.Install();");
         entry.AppendLine("        RecompOne.Runtime.Modding.ModLoader.LoadAll();");
         entry.AppendLine($"        cd.LoadToMemory(\"{bootExe}\", 0x{exe.Destination:X8}u, 0x800, {exe.TextSize});");
         entry.AppendLine("        Dispatcher.Load(\"main\");");

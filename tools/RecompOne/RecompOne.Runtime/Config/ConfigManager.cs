@@ -28,6 +28,12 @@ public static class ConfigManager
     public static GameConfig Game { get; private set; } = new();
     public static ViewConfig View { get; private set; } = new();
 
+    /// <summary>
+    /// Port 0's button source for one poll. Null uses <see cref="GameConfig.PadFor"/>.
+    /// Axis bytes are still taken from the returned object's stick indices.
+    /// </summary>
+    public static Func<GamepadBindings>? Port0PadBindings { get; set; }
+
     private static string? _pendingImGuiIni;
 
     public static void Load()

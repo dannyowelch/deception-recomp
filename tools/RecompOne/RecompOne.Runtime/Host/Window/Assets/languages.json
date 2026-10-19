@@ -1007,6 +1007,54 @@
       "zh-CN": "[按下按键来追加...]",
       "fr-FR": "[Appuyez sur un bouton pour ajouter...]"
     },
+    "settings.input.press_key_add": {
+      "en": "[press key to add...]",
+      "pt-BR": "[pressione uma tecla para adicionar...]",
+      "es-419": "[presiona una tecla para agregar...]",
+      "ja-JP": "[追加するキーを押してください...]",
+      "zh-CN": "[按下按键来追加...]",
+      "fr-FR": "[Appuyez sur une touche pour ajouter...]"
+    },
+    "settings.input.profile": {
+      "en": "Profile",
+      "pt-BR": "Perfil",
+      "es-419": "Perfil",
+      "ja-JP": "プロファイル",
+      "zh-CN": "配置",
+      "fr-FR": "Profil"
+    },
+    "settings.input.profile.menu": {
+      "en": "Menu",
+      "pt-BR": "Menu",
+      "es-419": "Menú",
+      "ja-JP": "メニュー",
+      "zh-CN": "菜单",
+      "fr-FR": "Menu"
+    },
+    "settings.input.profile.walk": {
+      "en": "Walk",
+      "pt-BR": "Andar",
+      "es-419": "Caminar",
+      "ja-JP": "歩行",
+      "zh-CN": "行走",
+      "fr-FR": "Marche"
+    },
+    "settings.input.profile.hint.menu": {
+      "en": "Left stick is the D-pad. Right stick is unused.",
+      "pt-BR": "O analógico esquerdo é o direcional. O direito não faz nada.",
+      "es-419": "La palanca izquierda es la cruceta. La derecha no se usa.",
+      "ja-JP": "左スティックは方向キーです。右スティックは使いません。",
+      "zh-CN": "左摇杆当作方向键。右摇杆不使用。",
+      "fr-FR": "Le stick gauche est la croix. Le stick droit est inutilisé."
+    },
+    "settings.input.profile.hint.walk": {
+      "en": "Left stick moves and strafes. Right stick turns and looks.",
+      "pt-BR": "O analógico esquerdo anda e desvia. O direito gira e olha.",
+      "es-419": "La palanca izquierda avanza y se desplaza. La derecha gira y mira.",
+      "ja-JP": "左スティックは移動と横移動、右スティックは旋回と視点です。",
+      "zh-CN": "左摇杆移动和侧移。右摇杆转向和视角。",
+      "fr-FR": "Le stick gauche avance et strafe. Le droit tourne et regarde."
+    },
     "settings.input.reset_defaults": {
       "en": "Reset to Defaults",
       "pt-BR": "Restaurar Padrões",

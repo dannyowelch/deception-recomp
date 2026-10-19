@@ -35,7 +35,7 @@ public static class BindingTable
     // reading a reshuffled list. What each button does is the port's (the map handed
     // to Draw), not written here.
     static readonly (string Label,
-                     Func<KeyBindings, string> GetKey, Action<KeyBindings, string> SetKey,
+                     Func<KeyBindings, string[]> GetKey, Action<KeyBindings, string[]> SetKey,
                      Func<GamepadBindings, int[]> GetPad, Action<GamepadBindings, int[]> SetPad)[] _rows =
     [
         ("Cross",    b => b.Cross,    (b,v) => b.Cross = v,    p => p.Cross,    (p,v) => p.Cross = v),
@@ -112,36 +112,53 @@ public static class BindingTable
 
             ImGui.TableSetColumnIndex(2);
             if (gamepad) PadCell(i, row, pad, ref remapRow, ref remapAdd);
-            else KeyCell(i, row, keys, ref remapRow);
+            else KeyCell(i, row, keys, ref remapRow, ref remapAdd);
         }
 
         ImGui.EndTable();
     }
 
     static void KeyCell(int i,
-        (string Label, Func<KeyBindings, string> GetKey, Action<KeyBindings, string> SetKey,
+        (string Label, Func<KeyBindings, string[]> GetKey, Action<KeyBindings, string[]> SetKey,
          Func<GamepadBindings, int[]> GetPad, Action<GamepadBindings, int[]> SetPad) row,
-        KeyBindings keys, ref int remapRow)
+        KeyBindings keys, ref int remapRow, ref bool remapAdd)
     {
         bool awaiting = remapRow == i;
-        var key = row.GetKey(keys);
+        var names = row.GetKey(keys) ?? [];
         var text = awaiting
-            ? Localization.T("settings.input.press_key")
-            : $"{(key.Length == 0 ? Localization.T("settings.input.unbound") : key)}##k{i}";
+            ? Localization.T(remapAdd ? "settings.input.press_key_add" : "settings.input.press_key")
+            : names.Length == 0 ? Localization.T("settings.input.unbound")
+                                : string.Join(" | ", names);
 
-        if (ImGui.Button(text, new System.Numerics.Vector2(-1, 0))) remapRow = i;
+        float plusW = ImGui.GetFrameHeight();
+        float spacing = ImGui.GetStyle().ItemSpacing.X;
+        if (ImGui.Button($"{text}##k{i}", new System.Numerics.Vector2(-plusW - spacing, 0)))
+        {
+            remapRow = i;
+            remapAdd = false;
+        }
+        ImGui.SameLine();
+        if (ImGui.Button($"+##kadd{i}", new System.Numerics.Vector2(plusW, 0)))
+        {
+            remapRow = i;
+            remapAdd = true;
+        }
+
         if (!awaiting) return;
 
-        if (GetPressedKey() is { } pressed)
+        if (GetPressedKey() is not { } pressed) return;
+        if (remapAdd)
         {
-            row.SetKey(keys, pressed);
-            remapRow = -1;
-            ConfigManager.SaveGame();
+            if (!names.Contains(pressed)) row.SetKey(keys, [.. names, pressed]);
         }
+        else row.SetKey(keys, [pressed]);
+
+        remapRow = -1;
+        ConfigManager.SaveGame();
     }
 
     static void PadCell(int i,
-        (string Label, Func<KeyBindings, string> GetKey, Action<KeyBindings, string> SetKey,
+        (string Label, Func<KeyBindings, string[]> GetKey, Action<KeyBindings, string[]> SetKey,
          Func<GamepadBindings, int[]> GetPad, Action<GamepadBindings, int[]> SetPad) row,
         GamepadBindings pad, ref int remapRow, ref bool remapAdd)
     {

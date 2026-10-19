@@ -28,6 +28,13 @@ public static class Controller
     public static byte LeftX = 0x80;
     public static byte LeftY = 0x80;
 
+    /// <summary>
+    /// Port 0's sticks from the last poll, −1..1, with no deadzone and no curve.
+    /// The four bytes above stay the curved report the game can read. Zero while
+    /// that pad is absent, so a disconnect does not keep steering.
+    /// </summary>
+    public static float LeftAxisX, LeftAxisY, RightAxisX, RightAxisY;
+
     /// <summary>Set by a port that reads the gyroscope; the host switches pad 1's
     /// on while this is true and off again when it is not (0102).</summary>
     public static bool WantGyro;

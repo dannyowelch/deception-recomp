@@ -1,33 +1,135 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace RecompOne.Runtime.Config;
+
+/// <summary>
+/// Reads a JSON string or an array of strings into <see cref="string[]"/>.
+/// An empty string and null become an empty array, so a settings file that
+/// still names one key per button keeps loading.
+/// </summary>
+public sealed class OneOrManyStringConverter : JsonConverter<string[]>
+{
+    public override string[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        switch (reader.TokenType)
+        {
+            case JsonTokenType.Null:
+                return [];
+            case JsonTokenType.String:
+            {
+                var s = reader.GetString();
+                return string.IsNullOrEmpty(s) ? [] : [s];
+            }
+            case JsonTokenType.StartArray:
+            {
+                var list = new List<string>();
+                while (reader.Read())
+                {
+                    if (reader.TokenType == JsonTokenType.EndArray) break;
+                    if (reader.TokenType == JsonTokenType.String)
+                    {
+                        var s = reader.GetString();
+                        if (!string.IsNullOrEmpty(s)) list.Add(s);
+                    }
+                    else if (reader.TokenType == JsonTokenType.Null)
+                        continue;
+                    else
+                        throw new JsonException($"Expected a key name, got {reader.TokenType}.");
+                }
+
+                return list.ToArray();
+            }
+            default:
+                throw new JsonException($"Expected a key name or a list of key names, got {reader.TokenType}.");
+        }
+    }
+
+    public override void Write(Utf8JsonWriter writer, string[] value, JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+        if (value != null)
+            foreach (var s in value)
+                if (!string.IsNullOrEmpty(s))
+                    writer.WriteStringValue(s);
+        writer.WriteEndArray();
+    }
+}
 
 public class KeyBindings
 {
-    public string Cross { get; set; } = "Z";
-    public string Circle { get; set; } = "X";
-    public string Square { get; set; } = "A";
-    public string Triangle { get; set; } = "S";
-    public string L1 { get; set; } = "Q";
-    public string R1 { get; set; } = "W";
-    public string L2 { get; set; } = "E";
-    public string R2 { get; set; } = "R";
-    public string L3 { get; set; } = "F";
-    public string R3 { get; set; } = "G";
-    public string Start { get; set; } = "Enter";
-    public string Select { get; set; } = "ShiftRight";
-    public string Up { get; set; } = "Up";
-    public string Down { get; set; } = "Down";
-    public string Left { get; set; } = "Left";
-    public string Right { get; set; } = "Right";
+    // Walk layout. Arrows stay on the D-pad so menus still move. One keyboard
+    // set is used in both walk and menus; the gamepad is what splits.
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] Cross { get; set; } = ["Space"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] Circle { get; set; } = ["C"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] Square { get; set; } = ["Z"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] Triangle { get; set; } = ["Tab"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] L1 { get; set; } = ["A"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] R1 { get; set; } = ["D"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] L2 { get; set; } = ["R"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] R2 { get; set; } = ["F"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] L3 { get; set; } = ["V"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] R3 { get; set; } = ["B"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] Start { get; set; } = ["Enter"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] Select { get; set; } = ["ShiftRight"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] Up { get; set; } = ["W", "Up"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] Down { get; set; } = ["S", "Down"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] Left { get; set; } = ["Q", "Left"];
+    [JsonConverter(typeof(OneOrManyStringConverter))]
+    public string[] Right { get; set; } = ["E", "Right"];
+
+    /// <summary>RecompOne's original one-key layout, before the walk defaults.</summary>
+    public static KeyBindings Stock()
+    {
+        return new KeyBindings
+        {
+            Cross = ["Z"], Circle = ["X"], Square = ["A"], Triangle = ["S"],
+            L1 = ["Q"], R1 = ["W"], L2 = ["E"], R2 = ["R"],
+            L3 = ["F"], R3 = ["G"], Start = ["Enter"], Select = ["ShiftRight"],
+            Up = ["Up"], Down = ["Down"], Left = ["Left"], Right = ["Right"]
+        };
+    }
 
     public static KeyBindings Empty()
     {
         return new KeyBindings
         {
-            Cross = "", Circle = "", Square = "", Triangle = "",
-            L1 = "", R1 = "", L2 = "", R2 = "",
-            L3 = "", R3 = "", Start = "", Select = "",
-            Up = "", Down = "", Left = "", Right = ""
+            Cross = [], Circle = [], Square = [], Triangle = [],
+            L1 = [], R1 = [], L2 = [], R2 = [],
+            L3 = [], R3 = [], Start = [], Select = [],
+            Up = [], Down = [], Left = [], Right = []
         };
+    }
+
+    public static bool Matches(KeyBindings a, KeyBindings b) =>
+        Same(a.Cross, b.Cross) && Same(a.Circle, b.Circle) && Same(a.Square, b.Square) &&
+        Same(a.Triangle, b.Triangle) && Same(a.L1, b.L1) && Same(a.R1, b.R1) &&
+        Same(a.L2, b.L2) && Same(a.R2, b.R2) && Same(a.L3, b.L3) && Same(a.R3, b.R3) &&
+        Same(a.Start, b.Start) && Same(a.Select, b.Select) &&
+        Same(a.Up, b.Up) && Same(a.Down, b.Down) && Same(a.Left, b.Left) && Same(a.Right, b.Right);
+
+    static bool Same(string[]? a, string[]? b)
+    {
+        if (ReferenceEquals(a, b)) return true;
+        if (a == null || b == null || a.Length != b.Length) return false;
+        for (var i = 0; i < a.Length; i++)
+            if (!string.Equals(a[i], b[i], StringComparison.Ordinal)) return false;
+        return true;
     }
 }
 
@@ -60,6 +162,22 @@ public class GamepadBindings
     public int LeftStickY { get; set; } = 1;
     public int RightStickX { get; set; } = 2;
     public int RightStickY { get; set; } = 3;
+
+    /// <summary>
+    /// Walk set. D-pad and the physical shoulders stay, and the sticks add
+    /// strafe, turn, and look beside them. 102/103 are left-stick X, 106/107
+    /// are right-stick X, 108/109 are right-stick Y. 108 is stick up.
+    /// </summary>
+    public static GamepadBindings Walk()
+    {
+        return new GamepadBindings
+        {
+            Up = [11, 104], Down = [12, 105],
+            Left = [13, 106], Right = [14, 107],
+            L1 = [9, 102], R1 = [10, 103],
+            L2 = [100, 108], R2 = [101, 109]
+        };
+    }
 
     public static GamepadBindings DefaultAnalog()
     {
@@ -94,7 +212,10 @@ public class GameConfig
     public bool Muted { get; set; } = false;
     public KeyBindings Keys { get; set; } = new();
     public KeyBindings Keys2 { get; set; } = KeyBindings.Empty();
+    /// <summary>Menu set: left stick is the D-pad, right stick is unbound.</summary>
     public GamepadBindings Pad { get; set; } = new();
+    /// <summary>Walk set. Missing from an older settings file, so the initializer stands.</summary>
+    public GamepadBindings PadWalk { get; set; } = GamepadBindings.Walk();
     public GamepadBindings Pad2 { get; set; } = GamepadBindings.Empty();
     public string PadDevice { get; set; } = "";
     public string PadDevice2 { get; set; } = "";

@@ -11,7 +11,7 @@ internal sealed class InputSettingsSection : ISettingsSection
     public string TitleKey => "settings.input";
     public int Order => 0;
 
-    private static readonly (string Label, Func<KeyBindings, string> GetKey, Action<KeyBindings, string> SetKey,
+    private static readonly (string Label, Func<KeyBindings, string[]> GetKey, Action<KeyBindings, string[]> SetKey,
         Func<GamepadBindings, int[]> GetPad, Action<GamepadBindings, int[]> SetPad)[] _rows =
         [
             ("Cross", b => b.Cross, (b, v) => b.Cross = v, p => p.Cross, (p, v) => p.Cross = v),
@@ -33,6 +33,7 @@ internal sealed class InputSettingsSection : ISettingsSection
         ];
 
     private bool _gamepadMode;
+    private bool _walkProfile;
     private int _padIndex;
     private int _remapRow = -1;
     private bool _remapAdd;
@@ -42,6 +43,7 @@ internal sealed class InputSettingsSection : ISettingsSection
         DrawDeviceSelector();
         ImGui.Spacing();
         DrawPadSelector();
+        DrawProfileSelector();
         ImGui.Spacing();
         DrawPadKind();
         ImGui.Spacing();
@@ -74,19 +76,18 @@ internal sealed class InputSettingsSection : ISettingsSection
                 if (_padIndex == 0) ConfigManager.Game.Keys = new KeyBindings();
                 else ConfigManager.Game.Keys2 = KeyBindings.Empty();
             }
+            else if (_padIndex == 0)
+            {
+                // Port 0 edits the menu set or the walk set, never the analog
+                // table. Reset restores whichever profile is on screen.
+                if (_walkProfile) ConfigManager.Game.PadWalk = GamepadBindings.Walk();
+                else ConfigManager.Game.Pad = new GamepadBindings();
+            }
             else
             {
                 var analog = ConfigManager.Game.KindFor(_padIndex) == PadKind.Analog;
-                if (_padIndex == 0)
-                {
-                    if (analog) ConfigManager.Game.PadAnalog = GamepadBindings.DefaultAnalog();
-                    else ConfigManager.Game.Pad = new GamepadBindings();
-                }
-                else
-                {
-                    if (analog) ConfigManager.Game.PadAnalog2 = GamepadBindings.Empty();
-                    else ConfigManager.Game.Pad2 = GamepadBindings.Empty();
-                }
+                if (analog) ConfigManager.Game.PadAnalog2 = GamepadBindings.Empty();
+                else ConfigManager.Game.Pad2 = GamepadBindings.Empty();
             }
 
             _remapRow = -1;
@@ -155,6 +156,47 @@ internal sealed class InputSettingsSection : ISettingsSection
         ImGui.SameLine();
         ImGuiEx.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f),
             Localization.T(index == 1 ? "settings.input.kind.analog.hint" : "settings.input.kind.digital.hint"));
+    }
+
+    /// <summary>Port 0's gamepad has two binding sets. Pad 2 keeps the single table.</summary>
+    private void DrawProfileSelector()
+    {
+        if (!_gamepadMode || _padIndex != 0) return;
+
+        ImGui.Spacing();
+        var label = Localization.T(_walkProfile ? "settings.input.profile.walk" : "settings.input.profile.menu");
+        ImGui.SetNextItemWidth(220f);
+        if (ImGui.BeginCombo(Localization.T("settings.input.profile"), label))
+        {
+            if (ImGui.Selectable(Localization.T("settings.input.profile.menu"), !_walkProfile))
+            {
+                if (_walkProfile) _remapRow = -1;
+                _walkProfile = false;
+            }
+
+            if (ImGui.Selectable(Localization.T("settings.input.profile.walk"), _walkProfile))
+            {
+                if (!_walkProfile) _remapRow = -1;
+                _walkProfile = true;
+            }
+
+            ImGui.EndCombo();
+        }
+
+        ImGui.SameLine();
+        ImGuiEx.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f),
+            Localization.T(_walkProfile ? "settings.input.profile.hint.walk" : "settings.input.profile.hint.menu"));
+    }
+
+    /// <summary>
+    /// Port 0's buttons come from the menu set or the walk set. Pad kind does
+    /// not choose between them. Pad 2 still follows <see cref="GameConfig.PadFor"/>.
+    /// </summary>
+    private GamepadBindings PadBeingEdited()
+    {
+        if (_padIndex == 0 && _gamepadMode)
+            return _walkProfile ? ConfigManager.Game.PadWalk : ConfigManager.Game.Pad;
+        return ConfigManager.Game.PadFor(_padIndex);
     }
 
     private void DrawDeviceSelector()
@@ -258,7 +300,7 @@ internal sealed class InputSettingsSection : ISettingsSection
         ImGui.TableHeadersRow();
 
         var keys = _padIndex == 0 ? ConfigManager.Game.Keys : ConfigManager.Game.Keys2;
-        var pad = ConfigManager.Game.PadFor(_padIndex);
+        var pad = PadBeingEdited();
 
         for (var i = 0; i < _rows.Length; i++)
         {
@@ -316,17 +358,39 @@ internal sealed class InputSettingsSection : ISettingsSection
             }
             else
             {
-                var key = getKey(keys);
+                var names = getKey(keys) ?? [];
                 var text = awaiting
-                    ? Localization.T("settings.input.press_key")
-                    : $"{(key.Length == 0 ? Localization.T("settings.input.unbound") : key)}##k{i}";
-                if (ImGui.Button(text, new Vector2(-1, 0))) _remapRow = i;
+                    ? Localization.T(_remapAdd ? "settings.input.press_key_add" : "settings.input.press_key")
+                    : names.Length == 0
+                        ? Localization.T("settings.input.unbound")
+                        : string.Join(" | ", names);
+
+                var plusW = ImGui.GetFrameHeight();
+                var spacing = ImGui.GetStyle().ItemSpacing.X;
+                if (ImGui.Button($"{text}##k{i}", new Vector2(-plusW - spacing, 0)))
+                {
+                    _remapRow = i;
+                    _remapAdd = false;
+                }
+
+                ImGui.SameLine();
+                if (ImGui.Button($"+##kadd{i}", new Vector2(plusW, 0)))
+                {
+                    _remapRow = i;
+                    _remapAdd = true;
+                }
+
                 if (awaiting)
                 {
                     var p = GetPressedKey();
                     if (p != null)
                     {
-                        setKey(keys, p);
+                        if (_remapAdd)
+                        {
+                            if (!names.Contains(p)) setKey(keys, [.. names, p]);
+                        }
+                        else setKey(keys, [p]);
+
                         _remapRow = -1;
                         ConfigManager.SaveGame();
                     }

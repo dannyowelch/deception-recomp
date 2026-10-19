@@ -429,10 +429,18 @@ internal static unsafe class InputManager
     {
         ushort s = 0xFFFF;
 
-        void B(string keyName, ushort bit)
+        void B(string[]? keyNames, ushort bit)
         {
-            if (Enum.TryParse<Key>(keyName, out var k) && kb.IsKeyPressed(k))
-                s &= (ushort)~bit;
+            if (keyNames == null) return;
+            foreach (var keyName in keyNames)
+            {
+                if (string.IsNullOrEmpty(keyName)) continue;
+                if (Enum.TryParse<Key>(keyName, out var k) && kb.IsKeyPressed(k))
+                {
+                    s &= (ushort)~bit;
+                    return;
+                }
+            }
         }
 
         B(cfg.Cross, Controller.Cross);
@@ -457,11 +465,13 @@ internal static unsafe class InputManager
 
     private static bool HasAnyKey(KeyBindings cfg)
     {
-        return cfg.Cross.Length > 0 || cfg.Circle.Length > 0 || cfg.Square.Length > 0 || cfg.Triangle.Length > 0 ||
-               cfg.L1.Length > 0 || cfg.R1.Length > 0 || cfg.L2.Length > 0 || cfg.R2.Length > 0 ||
-               cfg.L3.Length > 0 || cfg.R3.Length > 0 || cfg.Start.Length > 0 || cfg.Select.Length > 0 ||
-               cfg.Up.Length > 0 || cfg.Down.Length > 0 || cfg.Left.Length > 0 || cfg.Right.Length > 0;
+        return Any(cfg.Cross) || Any(cfg.Circle) || Any(cfg.Square) || Any(cfg.Triangle) ||
+               Any(cfg.L1) || Any(cfg.R1) || Any(cfg.L2) || Any(cfg.R2) ||
+               Any(cfg.L3) || Any(cfg.R3) || Any(cfg.Start) || Any(cfg.Select) ||
+               Any(cfg.Up) || Any(cfg.Down) || Any(cfg.Left) || Any(cfg.Right);
     }
+
+    private static bool Any(string[]? names) => names is { Length: > 0 };
 
     private static void PollGamepads()
     {
@@ -469,12 +479,20 @@ internal static unsafe class InputManager
 
         if (_pad0 != null)
         {
-            var bind = ConfigManager.Game.PadFor(0);
+            var bind = ConfigManager.Port0PadBindings?.Invoke() ?? ConfigManager.Game.PadFor(0);
             Controller.State = PadState(_pad0, bind, Controller.State);
             Controller.LeftX = Axis(_pad0, bind.LeftStickX);
             Controller.LeftY = Axis(_pad0, bind.LeftStickY);
             Controller.RightX = Axis(_pad0, bind.RightStickX);
             Controller.RightY = Axis(_pad0, bind.RightStickY);
+            Controller.LeftAxisX = RawAxis(_pad0, bind.LeftStickX);
+            Controller.LeftAxisY = RawAxis(_pad0, bind.LeftStickY);
+            Controller.RightAxisX = RawAxis(_pad0, bind.RightStickX);
+            Controller.RightAxisY = RawAxis(_pad0, bind.RightStickY);
+        }
+        else
+        {
+            Controller.LeftAxisX = Controller.LeftAxisY = Controller.RightAxisX = Controller.RightAxisY = 0f;
         }
 
         if (_pad1 != null)
@@ -699,6 +717,17 @@ internal static unsafe class InputManager
     {
         if (_sdl == null || index < 0) return 0x80;
         return AxisToByte(_sdl.GameControllerGetAxis(ctrl, (GameControllerAxis)index));
+    }
+
+    /// <summary>The same axis as <see cref="Axis"/>, normalized to −1..1. A short
+    /// at or below −32767 is −1, so the SDL edge is full deflection.</summary>
+    private static float RawAxis(GameController* ctrl, int index)
+    {
+        if (_sdl == null || index < 0) return 0f;
+        int v = _sdl.GameControllerGetAxis(ctrl, (GameControllerAxis)index);
+        if (v <= -32767) return -1f;
+        if (v >= 32767) return 1f;
+        return v / 32767f;
     }
 
     private static ushort PadState(GameController* ctrl, GamepadBindings pad, ushort s)
