@@ -12,11 +12,11 @@ namespace Verdite.Stub;
 /// A self-contained apphost looks for its managed assembly and hostfxr next to
 /// itself, so every DLL has to live in the same folder as the real launcher.
 /// Putting that folder at the install root is a hundred files beside the thing
-/// the player double-clicks. This process is built under the launcher's own name
-/// (Verdite2.exe) and starts bin\ under that same name, is WinExe (no extra
-/// console on double-click), attaches to a parent console when there is one so
-/// the game's log still reaches a terminal, and waits so the child's
-/// AttachConsole can join.
+/// the player double-clicks. This process is built under the name the player
+/// sees and starts bin\<StubChild>.exe (the same name, unless the port's game
+/// assembly already uses it). It is WinExe (no extra console on double-click),
+/// attaches to a parent console when there is one so the game's log still
+/// reaches a terminal, and waits so the child's AttachConsole can join.
 /// </summary>
 static class Program
 {
@@ -35,13 +35,14 @@ static class Program
 
         var root = Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory)
             .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var own = AppDomain.CurrentDomain.FriendlyName;   // Verdite2.exe
+        var own = AppDomain.CurrentDomain.FriendlyName;   // Deception.exe
         var name = Path.GetFileNameWithoutExtension(own);
-        var exe = Path.Combine(root, "bin", name + ".exe");
+        var child = StubChild.Exe;
+        var exe = Path.Combine(root, "bin", child + ".exe");
         if (!File.Exists(exe))
         {
             MessageBoxW(IntPtr.Zero,
-                name + " cannot start because bin\\" + name + ".exe is missing.",
+                name + " cannot start because bin\\" + child + ".exe is missing.",
                 name, 0x10);
             return 1;
         }

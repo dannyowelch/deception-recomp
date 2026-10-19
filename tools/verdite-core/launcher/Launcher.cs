@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
 using RecompOne.Runtime;
+using RecompOne.Runtime.Config;
 using RecompOne.Runtime.Host.Window;
 using Verdite.Core;
 using Verdite.Launcher.Build;
@@ -84,31 +85,29 @@ public static class Launcher
                 break;
             }
 
-            // The runtime's own picker: it opens a native file dialog, refuses
-            // anything DiscValidator rejects, saves the accepted path, and pumps the
-            // window while it waits. A player who has already chosen passes straight
-            // through.
-            Runtime.WaitForValidDisc();
-
-            var discPath = Runtime.CdPath;
-
-            // An image on the command line is the developer form -- `Verdite2
-            // other.cue`, or a .chd -- and it has to be settled HERE, before the
-            // build key, rather than only handed to the game at the end. The
-            // recompiled dispatch tables bake absolute LBAs from one mastering, and
-            // Dispatcher arms an overlay swap on a CD read hitting that exact
-            // sector, so an assembly built from the saved disc and then pointed at a
-            // different image silently fails to load its area modules -- which is
-            // the whole failure the per-user recompile exists to avoid. Whatever is
-            // played is what is keyed and built, and an argument that is not a
-            // usable disc is refused now rather than after fifteen seconds of
-            // building.
+            // An image on the command line is settled before the picker. OnLoad has
+            // already opened the picker when settings.json has no usable CdPath, which
+            // is every fresh data directory, so a quoted `Deception.exe disc.chd`
+            // would otherwise sit on that dialog and then build whatever was saved
+            // there. The recompiled dispatch tables bake absolute LBAs from one
+            // mastering, so whatever is played is what is keyed and built. An argument
+            // that is not a usable disc is refused now rather than after the build.
             if (args.Length > 0)
             {
                 if (DiscCheck.Validate(args[0]) is { } problem)
                     throw new InvalidOperationException($"{args[0]}: {problem}");
-                discPath = args[0];
+                ConfigManager.Game.CdPath = args[0];
+                ConfigManager.SaveGame();
+                PopupManager.Close<DiscPickerPopup>();
             }
+
+            // The runtime's own picker: it opens a native file dialog, refuses
+            // anything DiscValidator rejects, saves the accepted path, and pumps the
+            // window while it waits. A player who has already chosen, or who passed
+            // a valid image, passes straight through.
+            Runtime.WaitForValidDisc();
+
+            var discPath = Runtime.CdPath;
 
             var gameDll = Path.Combine(Paths.Builds, BuildKey.Compute(discPath), game.GameAssembly + ".dll");
             KeepPreviousBuild(gameDll);
@@ -121,7 +120,12 @@ public static class Launcher
             if (setup is not null && !Onboarding.Due(setup) && game.Env("SETUP") is not "1") setup = null;
 
             if (!File.Exists(gameDll)) BuildGame(discPath, gameDll, setup);
-            else if (setup is not null) RunSetup(new OnboardingPopup(setup, game.Name, inGame: false));
+            else
+            {
+                Console.WriteLine($"{Tag} cache hit {gameDll}");
+                try { File.AppendAllText(Path.Combine(Paths.Data, "launch-log.txt"), $"{Tag} cache hit {gameDll}{Environment.NewLine}"); } catch { }
+                if (setup is not null) RunSetup(new OnboardingPopup(setup, game.Name, inGame: false));
+            }
 
             Play(gameDll, discPath);
         }
@@ -131,6 +135,7 @@ public static class Launcher
             // the console is the last resort. A failure inside BuildGame is reported
             // in the popup and never reaches here.
             Console.Error.WriteLine($"[{game.Name} {Ver.Full}] {e}");
+            try { File.WriteAllText(Path.Combine(Paths.Data, "launch-error.txt"), e.ToString()); } catch { }
             return 1;
         }
 
@@ -233,11 +238,25 @@ public static class Launcher
 
                 popup.Status = "verdite.build.translating";
                 popup.Step = 1;
+                var clock = System.Diagnostics.Stopwatch.StartNew();
                 Recompile.Run(discPath, generated);
+                var recompile = clock.Elapsed;
 
                 popup.Status = "verdite.build.compiling";
                 popup.Step = 2;
+                clock.Restart();
                 GameCompile.Run(generated, gameDll);
+                var compile = clock.Elapsed;
+
+                // Both durations, and the cache the next launch looks for. Printed
+                // and written, so a windowed run that has no console still leaves
+                // the measurement beside the build.
+                string Sec(TimeSpan t) => t.TotalSeconds.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture);
+                var times = $"recompile {Sec(recompile)}s{Environment.NewLine}compile {Sec(compile)}s{Environment.NewLine}cache {gameDll}{Environment.NewLine}";
+                Console.WriteLine($"{Tag} recompile {Sec(recompile)}s");
+                Console.WriteLine($"{Tag} compile {Sec(compile)}s");
+                Console.WriteLine($"{Tag} cache {gameDll}");
+                try { File.WriteAllText(Path.Combine(Paths.Data, "build-times.txt"), times); } catch { }
 
                 popup.Step = 3;
             }

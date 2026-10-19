@@ -30,13 +30,16 @@ namespace Verdite.Launcher.Build;
 ///   - The launcher's version, which covers a change in how the build is done
 ///     rather than in what goes into it.
 ///
-/// The absolute LBAs are deliberately NOT part of the key even though they are
-/// baked into the output (Dispatcher arms an overlay swap on a CD read hitting an
-/// exact sector), because they are read from the disc during the recompile itself,
-/// so a differently mastered dump gets its own correct LBAs either way. Nor is the
-/// commit: hashing it would throw away the player's built game on every commit,
-/// a docs-only one included. The recompile is about a second; the cache exists
-/// for the compile.
+///   - Where those files sit. The recompiler bakes each file's LBA into the
+///     output, and Dispatcher arms an overlay swap on a CD read hitting that
+///     exact sector. Two masterings can carry the same bytes at different
+///     sectors. Hashing the bytes alone would serve the first mastering's
+///     assembly to the second, so each file's LBA and size are in the key: a
+///     moved file misses the cache and is rebuilt. A different serial never
+///     gets that far; DiscCheck refuses it.
+///
+/// The commit is not in the key. Hashing it would throw away the player's built
+/// game on every commit, a docs-only one included.
 /// </summary>
 static class BuildKey
 {
@@ -56,8 +59,16 @@ static class BuildKey
             foreach (var file in files)
             {
                 Add(hash, file);
+                if (!fs.Locate(file, out int lba, out uint size))
+                {
+                    Add(hash, "<missing>");
+                    continue;
+                }
+
+                Add(hash, lba.ToString());
+                Add(hash, size.ToString());
                 try { hash.AppendData(SHA256.HashData(fs.ReadFile(file))); }
-                catch { Add(hash, "<missing>"); }
+                catch { Add(hash, "<unreadable>"); }
             }
 
         foreach (var src in Sources.All().Concat(Sources.Config()))

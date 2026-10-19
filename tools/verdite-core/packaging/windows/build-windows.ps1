@@ -26,6 +26,11 @@ foreach ($line in Get-Content $envFile) {
 }
 $name = $pkg['NAME']; $appId = $pkg['APP_ID']
 if (-not $name -or -not $appId) { throw "package.env must set NAME and APP_ID" }
+# The apphost under bin\. NAME when the launcher assembly uses that name.
+# A port whose game assembly is already NAME sets LAUNCHER_ASSEMBLY to the
+# launcher's AssemblyName; the stub the player double-clicks stays NAME.exe.
+$launcher = $pkg['LAUNCHER_ASSEMBLY']
+if (-not $launcher) { $launcher = $name }
 
 $dist = Join-Path $root 'dist'
 $stage = Join-Path $dist 'win-x64'
@@ -77,7 +82,7 @@ $stubOut = Join-Path $dist 'stub'
 if (Test-Path $stubOut) { Remove-Item -Recurse -Force $stubOut }
 # A port that ships no mark gets a stub with none: Windows draws its plain
 # program icon until the game points the shortcuts at the card icon it read.
-$stubArgs = @("-p:StubName=$name")
+$stubArgs = @("-p:StubName=$name", "-p:StubChild=$launcher")
 if (Test-Path $icon) { $stubArgs += "-p:StubIcon=$icon" }
 dotnet publish $stubProj -c Release -o $stubOut @stubArgs
 if ($LASTEXITCODE -ne 0) { throw "stub publish failed" }
@@ -88,15 +93,20 @@ if (Test-Path $stubConfig) {
 }
 Remove-Item -Recurse -Force $stubOut
 
-# Third-party licences the artifact is obliged to carry. Noto Sans is embedded in
-# RecompOne.Runtime.dll (tools/RecompOne/patches/0033) and is SIL OFL 1.1, which
-# requires its licence to travel with the font; the port's own MIT terms go beside
-# it rather than only in the source tree.
+# Licences the artifact is obliged to carry. The port's MIT, the two vendored
+# trees, and Noto Sans: tools/RecompOne/patches/0033 embeds that font in
+# RecompOne.Runtime.dll, and SIL OFL 1.1 requires its licence to travel with it.
 $licenses = Join-Path $stage 'licenses'
 New-Item -ItemType Directory -Force -Path $licenses | Out-Null
 Copy-Item (Join-Path $root 'LICENSE') (Join-Path $licenses 'LICENSE')
+Copy-Item (Join-Path $root 'tools\RecompOne\LICENSE') (Join-Path $licenses 'RecompOne-LICENSE')
+Copy-Item (Join-Path $root 'tools\verdite-core\LICENSE') (Join-Path $licenses 'verdite-core-LICENSE')
 Copy-Item (Join-Path $root 'tools\RecompOne\patches\assets\NotoSans-OFL.txt') `
     (Join-Path $licenses 'NotoSans-OFL.txt')
+
+# The tag this package was built from, by the same rule that named it. A checkout
+# with no version tag writes 0.0.0.
+Set-Content -Path (Join-Path $stage 'version.txt') -Value $version -Encoding ascii
 
 $zip = Join-Path $dist "$name-$version-win-x64.zip"
 Write-Host "==> $zip"

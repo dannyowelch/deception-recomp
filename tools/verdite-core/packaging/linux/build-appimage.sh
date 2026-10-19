@@ -17,6 +17,8 @@ ROOT="${VERDITE_GAME_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && 
 # shellcheck disable=SC1091
 . "$ROOT/packaging/package.env"
 : "${NAME:?package.env sets no NAME}" "${APP_ID:?package.env sets no APP_ID}"
+# The apphost under usr/bin. NAME when the launcher assembly uses that name.
+LAUNCHER="${LAUNCHER_ASSEMBLY:-$NAME}"
 
 OUT="${OUT:-$ROOT/dist}"
 APPDIR="$OUT/$NAME.AppDir"
@@ -42,7 +44,7 @@ dotnet publish "$ROOT/$NAME.Launcher/$NAME.Launcher.csproj" \
 cat > "$APPDIR/AppRun" <<RUN
 #!/bin/sh
 HERE="\$(dirname "\$(readlink -f "\$0")")"
-exec "\$HERE/usr/bin/$NAME" "\$@"
+exec "\$HERE/usr/bin/$LAUNCHER" "\$@"
 RUN
 chmod +x "$APPDIR/AppRun"
 
@@ -68,13 +70,22 @@ fi
 cp "$ICON" "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP_ID.png"
 cp "$ICON" "$APPDIR/$APP_ID.png"
 
-# Third-party licences the artifact is obliged to carry. Noto Sans is embedded in
-# RecompOne.Runtime.dll (tools/RecompOne/patches/0033) and is SIL OFL 1.1, which
-# requires its licence to travel with the font; the port's own MIT terms go beside
-# it rather than only in the source tree.
-mkdir -p "$APPDIR/usr/share/doc/$APP_ID"
-cp "$ROOT/LICENSE" "$APPDIR/usr/share/doc/$APP_ID/LICENSE"
-cp "$ROOT/tools/RecompOne/patches/assets/NotoSans-OFL.txt" "$APPDIR/usr/share/doc/$APP_ID/NotoSans-OFL.txt"
+# Licences the artifact is obliged to carry. The port's MIT, the two vendored
+# trees, and Noto Sans: tools/RecompOne/patches/0033 embeds that font in
+# RecompOne.Runtime.dll, and SIL OFL 1.1 requires its licence to travel with it.
+# licenses/ is the tree a player looks for; usr/share/doc keeps the same files
+# where a desktop package expects them.
+mkdir -p "$APPDIR/licenses" "$APPDIR/usr/share/doc/$APP_ID"
+for dest in "$APPDIR/licenses" "$APPDIR/usr/share/doc/$APP_ID"; do
+    cp "$ROOT/LICENSE" "$dest/LICENSE"
+    cp "$ROOT/tools/RecompOne/LICENSE" "$dest/RecompOne-LICENSE"
+    cp "$ROOT/tools/verdite-core/LICENSE" "$dest/verdite-core-LICENSE"
+    cp "$ROOT/tools/RecompOne/patches/assets/NotoSans-OFL.txt" "$dest/NotoSans-OFL.txt"
+done
+
+# The tag this package was built from, by the same rule that named it.
+printf '%s\n' "$VERSION" > "$APPDIR/version.txt"
+printf '%s\n' "$VERSION" > "$APPDIR/usr/share/doc/$APP_ID/version.txt"
 
 echo "==> appimagetool"
 TOOL="${APPIMAGETOOL:-}"

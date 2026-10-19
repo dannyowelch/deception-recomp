@@ -13,6 +13,13 @@
   -->
   <PropertyGroup>
     <StubName Condition="'$(StubName)' == ''">Verdite</StubName>
+    <!--
+      The apphost under bin\. Defaults to the stub's own name, which is every
+      port whose AssemblyName matches NAME. A port whose game assembly uses that
+      name sets StubChild to the launcher's AssemblyName instead: the player
+      still double-clicks <StubName>.exe, and this starts bin\<StubChild>.exe.
+    -->
+    <StubChild Condition="'$(StubChild)' == ''">$(StubName)</StubChild>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
@@ -32,5 +39,13 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
+
+  <Target Name="GenerateStubChild" BeforeTargets="CoreCompile">
+    <WriteLinesToFile File="$(IntermediateOutputPath)StubChild.g.cs" Overwrite="true"
+                      Lines="static class StubChild { public const string Exe = &quot;$(StubChild)&quot;%3B }" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)StubChild.g.cs" />
+    </ItemGroup>
+  </Target>
 
 </Project>
