@@ -1,49 +1,48 @@
-<img width="700" alt="verdite2whi" src="https://github.com/user-attachments/assets/cfdd9335-6f94-4feb-9093-957fe9c58749" />
+# Deception
 
-***
-
-[![Release](https://img.shields.io/github/v/release/Voicedrew11/verdite2)](https://github.com/Voicedrew11/verdite2/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/Voicedrew11/verdite2/total)](https://github.com/Voicedrew11/verdite2/releases)
-[![Discord](https://img.shields.io/discord/1553561882843947149?label=Discord&logo=discord&logoColor=white&color=5865F2)](https://discord.gg/R4EKCs8RWH)
-
-Verdite2 is a PC port of King's Field (US) built atop of the [RecompOne](https://github.com/BlackLabelHQ/RecompOne) project. 
+A PC port of Tecmo's Deception: Invitation to Darkness (`SLUS-00340`), built with [RecompOne](https://github.com/BlackLabelHQ/RecompOne).
 
 ## Features
 
-- Widescreen support (16:9, 16:10, 21:9), with changed culling behavior
-- Perspective-correct textures and corrected vertex wobbling
-- Anisotropic filtering
-- Ambient occlusion
-- Z-buffer
-- 24-bit colour
-- 60+ fps
-- Consistent game speed
-- Per-pixel lighting
-- Fancy water
-- Reflections
-- Smooth fog
-- Enhanced audio quality
-- Automatic save reload after death
-- Keyboard and mouse support
-- Modern Twin-stick FPS controls
-- Mod support
+- Native Windows and Linux
+- Original 30 fps pacing
+- Full analog gamepad support
+- Keyboard and mouse look
+- Separate walk and menu controls
+- Fully remappable controls
+- Adjustable render scale
+- Fullscreen and borderless
+
+## Planned
+
+- 60 fps
+- Widescreen
+- Anti-aliasing and anisotropic filtering
 
 ## Status
 
-Game is playable from start to finish.
+Playable. A full playthrough is not yet verified.
 
 ## Requirements
 
-A dump of the North American PlayStation release (`SLUS-00158`) in `.cue` / `.bin`, or `.chd` format.
+Your own dump of the North American disc (`SLUS-00340`), as cue/bin or CHD v5, and the [.NET 10 SDK](https://dotnet.microsoft.com/download). No game data, BIOS, or assets are included.
 
-## Mods
+## Building and running
 
-A collection of mods by [@Acranon](https://github.com/Acranon) can be found in [Acranon/verdite2-mods](https://github.com/Acranon/verdite2-mods).
+Point `cue` in `config/deception.json/Deception.json` at your disc, then from the repository root:
+
+```bash
+dotnet run --project tools/RecompOne/RecompOne.Recompiler -c Release -- config/deception.json/Deception.json
+dotnet build Deception.csproj -c Release
+dotnet run --project Deception.csproj -c Release
+```
+
+To play, set `CdPath` in `settings.json`, or choose the file when the game asks. Settings are described in [docs/CONFIG.md](docs/CONFIG.md).
 
 ## Credits
 
-Built on [RecompOne](https://github.com/BlackLabelHQ/RecompOne) (MIT). *King's
-Field* is the property of FromSoftware; this project ships no game data.
+This project is MIT, Copyright (c) 2026 Danny Welch. See [LICENSE](LICENSE).
 
-The gear comparison on the equip and buy prompts began as
-[@Acranon](https://github.com/Acranon)'s Gear Compare mod.
+[RecompOne](https://github.com/BlackLabelHQ/RecompOne) is MIT, Copyright (c) 2026 flaffy. Verdite Core (`tools/verdite-core`) is MIT, Copyright (c) 2026 Voicedrew11.
+
+This project is not affiliated with Tecmo or Koei Tecmo.
