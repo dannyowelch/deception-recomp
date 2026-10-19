@@ -34,6 +34,30 @@ public static class ConfigManager
     /// </summary>
     public static Func<GamepadBindings>? Port0PadBindings { get; set; }
 
+    /// <summary>
+    /// Port 0's keyboard source for one poll. Null uses <see cref="GameConfig.Keys"/>.
+    /// </summary>
+    public static Func<KeyBindings>? Port0KeyBindings { get; set; }
+
+    /// <summary>
+    /// True when settings.json names this property. A missing or unreadable
+    /// file reports true so a caller does not replace an in-memory table.
+    /// </summary>
+    public static bool GameFileHas(string property)
+    {
+        if (!File.Exists(GameConfigPath)) return true;
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(GameConfigPath));
+            return doc.RootElement.ValueKind == JsonValueKind.Object &&
+                   doc.RootElement.TryGetProperty(property, out _);
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
     private static string? _pendingImGuiIni;
 
     public static void Load()

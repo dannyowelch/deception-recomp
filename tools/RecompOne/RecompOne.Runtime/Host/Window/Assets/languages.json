@@ -922,6 +922,42 @@
       "zh-CN": "游戏控制器",
       "fr-FR": "Manette"
     },
+    "settings.input.mouse": {
+      "en": "Mouse"
+    },
+    "settings.input.mouse.enable": {
+      "en": "Mouse look"
+    },
+    "settings.input.mouse.turn": {
+      "en": "Turn sensitivity"
+    },
+    "settings.input.mouse.look": {
+      "en": "Look sensitivity"
+    },
+    "settings.input.mouse.invert": {
+      "en": "Invert look Y"
+    },
+    "settings.input.mouse.left": {
+      "en": "Left button"
+    },
+    "settings.input.mouse.right": {
+      "en": "Right button"
+    },
+    "settings.input.mouse.middle": {
+      "en": "Middle button"
+    },
+    "settings.input.mouse.note": {
+      "en": "Escape captures the pointer and releases it. Dialog and opening a door keep it. Buttons act only while it is captured."
+    },
+    "settings.input.mouse.captured": {
+      "en": "The pointer is captured."
+    },
+    "settings.input.mouse.free": {
+      "en": "The pointer is free."
+    },
+    "settings.input.mouse.none": {
+      "en": "No mouse is attached."
+    },
     "settings.input.device": {
       "en": "Controller",
       "pt-BR": "Controle",
@@ -1046,6 +1082,12 @@
       "ja-JP": "左スティックは方向キーです。右スティックは使いません。",
       "zh-CN": "左摇杆当作方向键。右摇杆不使用。",
       "fr-FR": "Le stick gauche est la croix. Le stick droit est inutilisé."
+    },
+    "settings.input.profile.hint.menu.keys": {
+      "en": "Up, Down, Left, and Right move through menus, including planning."
+    },
+    "settings.input.profile.hint.walk.keys": {
+      "en": "Up and Down move. L1 and R1 strafe. Left and Right turn."
     },
     "settings.input.profile.hint.walk": {
       "en": "Left stick moves and strafes. Right stick turns and looks.",

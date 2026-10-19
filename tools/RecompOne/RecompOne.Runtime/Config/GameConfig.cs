@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using RecompOne.Runtime.Hardware;
 
 namespace RecompOne.Runtime.Config;
 
@@ -58,8 +59,9 @@ public sealed class OneOrManyStringConverter : JsonConverter<string[]>
 
 public class KeyBindings
 {
-    // Walk layout. Arrows stay on the D-pad so menus still move. One keyboard
-    // set is used in both walk and menus; the gamepad is what splits.
+    // Walk layout. Up and Down move, L1 and R1 strafe, Left and Right turn.
+    // Arrows stay on the D-pad. Menus use KeyBindings.Menu, where strafe
+    // becomes Left and Right.
     [JsonConverter(typeof(OneOrManyStringConverter))]
     public string[] Cross { get; set; } = ["Space"];
     [JsonConverter(typeof(OneOrManyStringConverter))]
@@ -115,6 +117,75 @@ public class KeyBindings
             Up = [], Down = [], Left = [], Right = []
         };
     }
+
+    /// <summary>
+    /// Menu set built from the walk defaults. Strafe keys become Left and
+    /// Right, turn keys become the shoulders, and the arrows stay on the D-pad.
+    /// </summary>
+    public static KeyBindings Menu() => MenuFrom(new KeyBindings());
+
+    /// <summary>
+    /// Menu set for a walk layout the player already saved. Face buttons and
+    /// Up and Down are copied. Strafe becomes Left and Right. Arrow keys that
+    /// were on the turn rows stay on the D-pad, and the other turn keys move
+    /// to the shoulders.
+    /// </summary>
+    public static KeyBindings MenuFrom(KeyBindings? walk)
+    {
+        walk ??= new KeyBindings();
+        var menu = Clone(walk);
+        menu.Left = Merge(walk.L1, Arrows(walk.Left, "Left"));
+        menu.Right = Merge(walk.R1, Arrows(walk.Right, "Right"));
+        menu.L1 = Except(WithoutArrows(walk.Left), menu.Left);
+        menu.R1 = Except(WithoutArrows(walk.Right), menu.Right);
+        return menu;
+    }
+
+    public static KeyBindings Clone(KeyBindings? src)
+    {
+        src ??= new KeyBindings();
+        return new KeyBindings
+        {
+            Cross = Copy(src.Cross), Circle = Copy(src.Circle), Square = Copy(src.Square),
+            Triangle = Copy(src.Triangle), L1 = Copy(src.L1), R1 = Copy(src.R1),
+            L2 = Copy(src.L2), R2 = Copy(src.R2), L3 = Copy(src.L3), R3 = Copy(src.R3),
+            Start = Copy(src.Start), Select = Copy(src.Select),
+            Up = Copy(src.Up), Down = Copy(src.Down), Left = Copy(src.Left), Right = Copy(src.Right)
+        };
+    }
+
+    static readonly string[] ArrowNames = ["Up", "Down", "Left", "Right"];
+
+    static string[] Copy(string[]? names) =>
+        names == null ? [] : names.Where(s => !string.IsNullOrEmpty(s)).ToArray();
+
+    static string[] Merge(string[]? a, string[]? b)
+    {
+        var list = new List<string>();
+        Add(list, a);
+        Add(list, b);
+        return list.ToArray();
+    }
+
+    static void Add(List<string> list, string[]? names)
+    {
+        if (names == null) return;
+        foreach (var s in names)
+        {
+            if (string.IsNullOrEmpty(s)) continue;
+            if (!list.Exists(x => string.Equals(x, s, StringComparison.Ordinal)))
+                list.Add(s);
+        }
+    }
+
+    static string[] WithoutArrows(string[]? names) =>
+        Copy(names).Where(s => Array.IndexOf(ArrowNames, s) < 0).ToArray();
+
+    static string[] Arrows(string[]? names, string arrow) =>
+        Copy(names).Where(s => string.Equals(s, arrow, StringComparison.Ordinal)).ToArray();
+
+    static string[] Except(string[]? names, string[]? drop) =>
+        Copy(names).Where(s => drop == null || !drop.Contains(s)).ToArray();
 
     public static bool Matches(KeyBindings a, KeyBindings b) =>
         Same(a.Cross, b.Cross) && Same(a.Circle, b.Circle) && Same(a.Square, b.Square) &&
@@ -210,7 +281,14 @@ public class GameConfig
     public float SpuVolume { get; set; } = 1.0f;
     public float XaVolume { get; set; } = 1.0f;
     public bool Muted { get; set; } = false;
+    /// <summary>Walk set. An older file stored its only keyboard table here.</summary>
     public KeyBindings Keys { get; set; } = new();
+    /// <summary>
+    /// Menu set, including planning. Missing from an older file, so the
+    /// initializer stands until a save. Face buttons match the walk set and
+    /// the strafe keys become Left and Right.
+    /// </summary>
+    public KeyBindings KeysMenu { get; set; } = KeyBindings.Menu();
     public KeyBindings Keys2 { get; set; } = KeyBindings.Empty();
     /// <summary>Menu set: left stick is the D-pad, right stick is unbound.</summary>
     public GamepadBindings Pad { get; set; } = new();
@@ -223,6 +301,31 @@ public class GameConfig
     public GamepadBindings PadAnalog2 { get; set; } = GamepadBindings.Empty();
     public PadKind PadKind { get; set; } = PadKind.Digital;
     public PadKind PadKind2 { get; set; } = PadKind.Digital;
+
+    /// <summary>When false, the walk hooks leave the game's digital steps.
+    /// Mouse look is separate and stays on.</summary>
+    public bool Analog { get; set; } = true;
+    /// <summary>When false, the pointer is not captured and mouse motion is not
+    /// turned into yaw, pitch, or pad buttons. Sticks are unaffected.</summary>
+    public bool MouseLook { get; set; } = true;
+    /// <summary>Yaw units per mouse pixel are 8 times this. 1 keeps that rate.</summary>
+    public float MouseSensitivityX { get; set; } = 1f;
+    /// <summary>Look units per mouse pixel are 4 times this. 1 keeps that rate.</summary>
+    public float MouseSensitivityY { get; set; } = 1f;
+    public bool InvertLookY { get; set; } = false;
+    /// <summary>Pad button held by the left mouse button while the pointer is
+    /// captured. 0 is none. See <see cref="MousePad"/>.</summary>
+    public int MouseLeft { get; set; } = 1;
+    /// <summary>Pad button held by the right mouse button while the pointer is
+    /// captured. 2 is Circle. 0 is none. See <see cref="MousePad"/>.</summary>
+    public int MouseRight { get; set; } = 2;
+    /// <summary>Pad button held by the middle mouse button while the pointer is
+    /// captured. 4 is Triangle. 0 is none. See <see cref="MousePad"/>.</summary>
+    public int MouseMiddle { get; set; } = 4;
+    /// <summary>Stick deadzone. Read sites clamp this to 0..0.99.</summary>
+    public float StickDeadzone { get; set; } = 0.15f;
+    /// <summary>Power applied after the deadzone remap. 1 leaves the remap as it is.</summary>
+    public float StickCurve { get; set; } = 1f;
 
     public PadKind KindFor(int port)
     {
@@ -237,4 +340,37 @@ public class GameConfig
     }
 
     public List<string> ActiveMods { get; set; } = [];
+}
+
+/// <summary>
+/// What a mouse button holds in the pad word. Index 0 is none, and saved
+/// settings store the index, so this order stays put.
+/// </summary>
+public static class MousePad
+{
+    public static readonly (string Name, ushort Bit)[] Buttons =
+    [
+        ("None", 0),
+        ("Cross", Controller.Cross),
+        ("Circle", Controller.Circle),
+        ("Square", Controller.Square),
+        ("Triangle", Controller.Triangle),
+        ("L1", Controller.L1),
+        ("R1", Controller.R1),
+        ("L2", Controller.L2),
+        ("R2", Controller.R2),
+        ("L3", Controller.L3),
+        ("R3", Controller.R3),
+        ("Start", Controller.Start),
+        ("Select", Controller.Select),
+        ("Up", Controller.Up),
+        ("Down", Controller.Down),
+        ("Left", Controller.Left),
+        ("Right", Controller.Right),
+    ];
+
+    public static int Clamp(int index) =>
+        index > 0 && index < Buttons.Length ? index : 0;
+
+    public static ushort Bit(int index) => Buttons[Clamp(index)].Bit;
 }

@@ -204,6 +204,7 @@ internal static unsafe class InputManager
         PollGamepadEvents();
         PollKeyboard();
         PollGamepads();
+        PollMouseButtons();
         PollGyro();
         PollRumble();
         Controller.Connected2 = _pad1 != null || HasAnyKey(ConfigManager.Game.Keys2);
@@ -421,7 +422,8 @@ internal static unsafe class InputManager
             return;
         }
 
-        Controller.State = KeyState(kb, ConfigManager.Game.Keys);
+        var keys = ConfigManager.Port0KeyBindings?.Invoke() ?? ConfigManager.Game.Keys;
+        Controller.State = KeyState(kb, keys ?? new KeyBindings());
         Controller.State2 = KeyState(kb, ConfigManager.Game.Keys2);
     }
 
@@ -461,6 +463,26 @@ internal static unsafe class InputManager
         B(cfg.Right, Controller.Right);
 
         return s;
+    }
+
+    /// <summary>
+    /// While the pointer is captured, a mapped mouse button holds the same pad
+    /// bit a key would. Uncaptured clicks stay with the desktop.
+    /// </summary>
+    private static void PollMouseButtons()
+    {
+        var game = ConfigManager.Game;
+        if (!game.MouseLook || !MouseCaptured || _mouse == null) return;
+        HoldMouse(game.MouseLeft, MouseButton.Left);
+        HoldMouse(game.MouseRight, MouseButton.Right);
+        HoldMouse(game.MouseMiddle, MouseButton.Middle);
+    }
+
+    private static void HoldMouse(int index, MouseButton button)
+    {
+        var bit = MousePad.Bit(index);
+        if (bit == 0 || !_mouse!.IsButtonPressed(button)) return;
+        Controller.State &= (ushort)~bit;
     }
 
     private static bool HasAnyKey(KeyBindings cfg)

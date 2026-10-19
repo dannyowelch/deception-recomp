@@ -33,6 +33,7 @@ internal sealed class InputSettingsSection : ISettingsSection
         ];
 
     private bool _gamepadMode;
+    private bool _mouseMode;
     private bool _walkProfile;
     private int _padIndex;
     private int _remapRow = -1;
@@ -41,6 +42,13 @@ internal sealed class InputSettingsSection : ISettingsSection
     public void Draw()
     {
         DrawDeviceSelector();
+        if (_mouseMode)
+        {
+            ImGui.Spacing();
+            DrawMouse();
+            return;
+        }
+
         ImGui.Spacing();
         DrawPadSelector();
         DrawProfileSelector();
@@ -73,8 +81,12 @@ internal sealed class InputSettingsSection : ISettingsSection
         {
             if (!_gamepadMode)
             {
-                if (_padIndex == 0) ConfigManager.Game.Keys = new KeyBindings();
-                else ConfigManager.Game.Keys2 = KeyBindings.Empty();
+                if (_padIndex != 0)
+                    ConfigManager.Game.Keys2 = KeyBindings.Empty();
+                else if (_walkProfile)
+                    ConfigManager.Game.Keys = new KeyBindings();
+                else
+                    ConfigManager.Game.KeysMenu = KeyBindings.Menu();
             }
             else if (_padIndex == 0)
             {
@@ -158,10 +170,10 @@ internal sealed class InputSettingsSection : ISettingsSection
             Localization.T(index == 1 ? "settings.input.kind.analog.hint" : "settings.input.kind.digital.hint"));
     }
 
-    /// <summary>Port 0's gamepad has two binding sets. Pad 2 keeps the single table.</summary>
+    /// <summary>Port 0's gamepad and keyboard each have a menu set and a walk set. Pad 2 keeps one table.</summary>
     private void DrawProfileSelector()
     {
-        if (!_gamepadMode || _padIndex != 0) return;
+        if (_padIndex != 0) return;
 
         ImGui.Spacing();
         var label = Localization.T(_walkProfile ? "settings.input.profile.walk" : "settings.input.profile.menu");
@@ -184,8 +196,22 @@ internal sealed class InputSettingsSection : ISettingsSection
         }
 
         ImGui.SameLine();
-        ImGuiEx.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f),
-            Localization.T(_walkProfile ? "settings.input.profile.hint.walk" : "settings.input.profile.hint.menu"));
+        var hint = _gamepadMode
+            ? (_walkProfile ? "settings.input.profile.hint.walk" : "settings.input.profile.hint.menu")
+            : (_walkProfile ? "settings.input.profile.hint.walk.keys" : "settings.input.profile.hint.menu.keys");
+        ImGuiEx.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f), Localization.T(hint));
+    }
+
+    /// <summary>
+    /// Port 0's keyboard comes from the menu set or the walk set. Pad 2 keeps
+    /// <see cref="GameConfig.Keys2"/>.
+    /// </summary>
+    private KeyBindings KeysBeingEdited()
+    {
+        var game = ConfigManager.Game;
+        if (_padIndex != 0) return game.Keys2 ?? KeyBindings.Empty();
+        if (_walkProfile) return game.Keys ??= new KeyBindings();
+        return game.KeysMenu ??= KeyBindings.Menu();
     }
 
     /// <summary>
@@ -205,20 +231,116 @@ internal sealed class InputSettingsSection : ISettingsSection
         {
             if (ImGui.BeginTabItem(Localization.T("settings.input.keyboard")))
             {
-                if (_gamepadMode) _remapRow = -1;
+                if (_gamepadMode || _mouseMode) _remapRow = -1;
                 _gamepadMode = false;
+                _mouseMode = false;
                 ImGui.EndTabItem();
             }
 
             if (ImGui.BeginTabItem(Localization.T("settings.input.gamepad")))
             {
-                if (!_gamepadMode) _remapRow = -1;
+                if (!_gamepadMode || _mouseMode) _remapRow = -1;
                 _gamepadMode = true;
+                _mouseMode = false;
+                ImGui.EndTabItem();
+            }
+
+            if (ImGui.BeginTabItem(Localization.T("settings.input.mouse")))
+            {
+                if (!_mouseMode) _remapRow = -1;
+                _gamepadMode = false;
+                _mouseMode = true;
                 ImGui.EndTabItem();
             }
 
             ImGui.EndTabBar();
         }
+    }
+
+    private static readonly (string Label, Func<GameConfig, int> Get, Action<GameConfig, int> Set)[] _mouseButtons =
+    [
+        ("settings.input.mouse.left", c => c.MouseLeft, (c, v) => c.MouseLeft = v),
+        ("settings.input.mouse.right", c => c.MouseRight, (c, v) => c.MouseRight = v),
+        ("settings.input.mouse.middle", c => c.MouseMiddle, (c, v) => c.MouseMiddle = v),
+    ];
+
+    private static void DrawMouse()
+    {
+        var cfg = ConfigManager.Game;
+        var enabled = cfg.MouseLook;
+        if (ImGui.Checkbox(Localization.T("settings.input.mouse.enable"), ref enabled))
+        {
+            cfg.MouseLook = enabled;
+            if (!enabled) HostWindow.MouseCaptured = false;
+            ConfigManager.SaveGame();
+        }
+
+        ImGui.Spacing();
+        ImGui.BeginDisabled(!enabled);
+
+        Slider("settings.input.mouse.turn", cfg.MouseSensitivityX, v => cfg.MouseSensitivityX = v);
+        Slider("settings.input.mouse.look", cfg.MouseSensitivityY, v => cfg.MouseSensitivityY = v);
+
+        var invert = cfg.InvertLookY;
+        if (ImGui.Checkbox(Localization.T("settings.input.mouse.invert"), ref invert))
+        {
+            cfg.InvertLookY = invert;
+            ConfigManager.SaveGame();
+        }
+
+        ImGui.Spacing();
+        var names = MousePad.Buttons.Select(b => b.Name).ToArray();
+        foreach (var (label, get, set) in _mouseButtons)
+        {
+            var index = MousePad.Clamp(get(cfg));
+            ImGui.SetNextItemWidth(220f);
+            if (ImGui.Combo(Localization.T(label), ref index, names, names.Length))
+            {
+                set(cfg, MousePad.Clamp(index));
+                ConfigManager.SaveGame();
+            }
+        }
+
+        ImGui.EndDisabled();
+
+        ImGui.Spacing();
+        if (!HostWindow.MouseAvailable)
+            Note(Localization.T("settings.input.mouse.none"));
+        else
+            Note(HostWindow.MouseCaptured
+                ? Localization.T("settings.input.mouse.captured")
+                : Localization.T("settings.input.mouse.free"));
+        Note(Localization.T("settings.input.mouse.note"));
+
+        ImGui.Spacing();
+        if (ImGui.Button(Localization.T("settings.input.reset_defaults")))
+        {
+            cfg.MouseLook = true;
+            cfg.MouseSensitivityX = 1f;
+            cfg.MouseSensitivityY = 1f;
+            cfg.InvertLookY = false;
+            cfg.MouseLeft = 1;
+            cfg.MouseRight = 2;
+            cfg.MouseMiddle = 4;
+            ConfigManager.SaveGame();
+        }
+    }
+
+    private static void Slider(string key, float value, Action<float> set)
+    {
+        if (float.IsNaN(value) || value < 0f) value = 0f;
+        ImGui.SetNextItemWidth(220f);
+        if (ImGui.SliderFloat(Localization.T(key), ref value, 0f, 5f, "%.2f", ImGuiSliderFlags.AlwaysClamp))
+            set(value);
+        if (ImGui.IsItemDeactivatedAfterEdit())
+            ConfigManager.SaveGame();
+    }
+
+    private static void Note(string text)
+    {
+        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.6f, 0.6f, 0.65f, 1f));
+        ImGui.TextWrapped(text);
+        ImGui.PopStyleColor();
     }
 
     private void DrawPadSelector()
@@ -299,7 +421,7 @@ internal sealed class InputSettingsSection : ISettingsSection
             ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableHeadersRow();
 
-        var keys = _padIndex == 0 ? ConfigManager.Game.Keys : ConfigManager.Game.Keys2;
+        var keys = KeysBeingEdited();
         var pad = PadBeingEdited();
 
         for (var i = 0; i < _rows.Length; i++)

@@ -801,6 +801,10 @@ public static class HostWindow
         InputManager.MouseCaptured = request != 0;
     }
 
+    /// <summary>While set, the top-right of the window shows whether the pointer
+    /// is captured. A port turns this on while that state is meaningful.</summary>
+    public static bool MouseCaptureHud;
+
     /// <summary>Whether the window has the desktop's focus. A captured pointer
     /// that outlives its focus is the desktop's to give back, so a port that
     /// captures wants to know when this goes false (0101).</summary>
@@ -1248,12 +1252,39 @@ public static class HostWindow
         DrawDockspace();
         PanelManager.DrawPanels();
         PopupManager.Draw();
+        DrawMouseCaptureHud();
         Profiler.End(panels);
         gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         gl.Viewport(0, 0, (uint)fbDef.X, (uint)fbDef.Y);
         var imgui = Profiler.Begin(Profiler.ImGuiRender);
         _imgui.Render();
         Profiler.End(imgui);
+    }
+
+    /// <summary>A one-line label. NoInputs so it never takes the pointer.</summary>
+    private static void DrawMouseCaptureHud()
+    {
+        if (!MouseCaptureHud) return;
+
+        var text = MouseCaptured ? "Mouse captured" : "Mouse released";
+        var viewport = ImGui.GetMainViewport();
+        var size = ImGui.CalcTextSize(text);
+        const float margin = 10f;
+        const float pad = 8f;
+        ImGui.SetNextWindowPos(new Vector2(
+            viewport.WorkPos.X + viewport.WorkSize.X - size.X - pad * 2f - margin,
+            viewport.WorkPos.Y + margin));
+        ImGui.SetNextWindowBgAlpha(0.55f);
+        const ImGuiWindowFlags flags = ImGuiWindowFlags.NoDecoration |
+                                       ImGuiWindowFlags.NoInputs |
+                                       ImGuiWindowFlags.NoNav |
+                                       ImGuiWindowFlags.AlwaysAutoResize |
+                                       ImGuiWindowFlags.NoFocusOnAppearing |
+                                       ImGuiWindowFlags.NoDocking |
+                                       ImGuiWindowFlags.NoBringToFrontOnFocus;
+        ImGui.Begin("##mouse-capture", flags);
+        ImGui.TextUnformatted(text);
+        ImGui.End();
     }
 
     private static void DrawDockspace()
