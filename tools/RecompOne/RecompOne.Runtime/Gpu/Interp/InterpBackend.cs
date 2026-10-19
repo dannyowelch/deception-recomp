@@ -150,8 +150,6 @@ public sealed class InterpBackend : IGpuBackend
             _inner.DrawRect(in r, in f);
             return;
         }
-        // TEMP. Recorded now and drawn later, so this call has not reached a target.
-        if (GpuHle.TempWantRectDest) GpuHle.TempRectDest = "recorded";
         _recording.Rects.Add(new RectRecord { Rect = r, Flags = f });
         _recording.Add(GraphOp.Rect, _recording.Rects.Count - 1);
     }
@@ -175,8 +173,6 @@ public sealed class InterpBackend : IGpuBackend
             _inner.FillRect(x, y, w, h, color15);
             return;
         }
-        // TEMP. The replay applies it later, through the inner backend, without a second log line.
-        GpuHle.TempFillApplied = "recorded";
         _recording.Fills.Add(new FillRecord { X = x, Y = y, W = w, H = h, Color = color15 });
         _recording.Add(GraphOp.Fill, _recording.Fills.Count - 1);
     }
@@ -188,8 +184,6 @@ public sealed class InterpBackend : IGpuBackend
             _inner.CopyVram(sx, sy, dx, dy, w, h);
             return;
         }
-        // TEMP. The replay applies it later, through the inner backend, without a second log line.
-        GpuHle.TempMoveApplied = "recorded";
         _recording.Copies.Add(new CopyRecord { Sx = sx, Sy = sy, Dx = dx, Dy = dy, W = w, H = h });
         _recording.Add(GraphOp.CopyVram, _recording.Copies.Count - 1);
     }

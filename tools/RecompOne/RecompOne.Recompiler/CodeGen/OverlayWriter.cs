@@ -263,8 +263,7 @@ public static class OverlayWriter
         // Unique starts in the shared 0x800B3578 slot. Kokumei must not call these
         // as Owner.func: bin_3dmd, enty and plan occupy one address, so the overlay
         // resident at the call is what should run. Those starts are taken out of
-        // kokumei's known-function map and emit Dispatcher.Call. The names stay
-        // here so a direct call, if one is still emitted, is probed with its owner.
+        // kokumei's known-function map and emit Dispatcher.Call.
         var slotOwners = new Dictionary<uint, string>();
         foreach (var result in overlayResults)
         {
@@ -300,8 +299,7 @@ public static class OverlayWriter
             EmitOverlayFile(result.Name, overlayParts[result.Name], known, config.Debug,
                 config.AddressComments, config.DisasmComments, result.LbaStart, result.Base, result.Size,
                 result.Instructions, outDir,
-                SymbolRelocator.Plan(result.Functions, config.Relocations, result.Name),
-                result.Name == "kokumei", slotOwners);
+                SymbolRelocator.Plan(result.Functions, config.Relocations, result.Name));
         }
 
         Console.WriteLine("[Recompiler] Emitting Entry.cs");
@@ -351,7 +349,7 @@ public static class OverlayWriter
     private static void EmitOverlayFile(string overlayName, List<OverlayPart> parts,
         Dictionary<uint, string> knownFuncs, bool debug, bool addressComments,
         bool disasmComments, int lbaStart, uint ovlBase, uint ovlSize, MipsInstruction[] instrs, string outDir,
-        Dictionary<uint, uint> relocations, bool probeKokumeiCalls, Dictionary<uint, string> slotOwners)
+        Dictionary<uint, uint> relocations)
     {
         var funcs = parts.SelectMany(p => p.Functions).ToList();
         var partClass = new Dictionary<uint, string>();
@@ -389,9 +387,7 @@ public static class OverlayWriter
                     RaReturnJrs = FunctionDetector.ComputeRaReturnJrs(func),
                     LinkReturns = LabelManager.CollectLinkReturns(func),
                     AllInstructions = instrs,
-                    Relocations = relocations,
-                    ProbeKokumeiCalls = probeKokumeiCalls,
-                    SlotOwners = slotOwners
+                    Relocations = relocations
                 };
                 sb.Append(FunctionEmitter.Emit(func, ctx));
             }

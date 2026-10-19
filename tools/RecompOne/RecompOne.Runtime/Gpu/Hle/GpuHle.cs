@@ -34,35 +34,6 @@ public static class GpuHle
     // and stamping from it is what made the boot splash flap between widths.
     public static bool PortWidenedPrim;
 
-    // TEMP. Menu clear/fill tracing. Not a permanent API.
-    // TempIsbgClear marks the one GP0 0x60 PutDrawEnv emits when isbg != 0.
-    // TempWantRectDest asks the backend where that rectangle was queued.
-    internal static bool TempIsbgClear;
-    internal static bool TempWantRectDest;
-    internal static string TempRectDest = "";
-    internal static string TempFillApplied = "";
-
-    // TEMP. StoreImage/LoadImage tracing. A load is armed for every rectangle.
-    // A store is armed only when the rectangle meets a display rect. Consumed by
-    // the GL backend. Not a permanent API.
-    internal static bool TempImageOp;
-    internal static string TempImageKind = "";
-    internal static string TempSnapDetail = "";
-    internal static string TempMoveApplied = "";
-
-    internal static bool TempTouchesDisplay(int x, int y, int w, int h)
-    {
-        if (w <= 0 || h <= 0) return false;
-        for (int i = 0; i < RectCount; i++)
-        {
-            var r = GetRect(i);
-            if (!r.Valid || r.W <= 0 || r.H <= 0) continue;
-            if (x < r.X + r.W && r.X < x + w && y < r.Y + r.H && r.Y < y + h)
-                return true;
-        }
-        return false;
-    }
-
     public struct DispRect
     {
         public int X, Y, W, H;

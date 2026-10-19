@@ -1243,23 +1243,12 @@ public sealed partial class GlCore : IGpuBackend
     public void DrawRect(in HleRect r, in PrimFlags f)
     {
         if (PlanarReflections.Capturing && PlanarDrop())
-        {
-            // TEMP. The capture dropped this rectangle; it was not drawn.
-            if (GpuHle.TempWantRectDest) GpuHle.TempRectDest = "dropped";
             return;
-        }
         ResolveReplacement(f, r.U, r.V, r.U + Math.Max(0, r.W - 1), r.V + Math.Max(0, r.H - 1));
         // A sprite never carries a recovered depth, so under the occlusion pass it
         // is the mask (see DrawTri): opaque stamps the far plane, semi-transparent
         // leaves the depth under it alone.
         Begin(f, 6, FarMask(f));
-        // TEMP. queued-rt is drawn into that display target on the next flush.
-        // queued-sample is drawn into 1x sample VRAM, which a later present skips
-        // while a display target exists.
-        if (GpuHle.TempWantRectDest)
-            GpuHle.TempRectDest = _kTarget == null
-                ? "queued-sample"
-                : $"queued-rt:{_kTarget.X},{_kTarget.Y},{_kTarget.W}x{_kTarget.H}" + (_kTarget.IsPlanar ? ",planar" : "");
         // 0067. A sprite is 2D: the HUD's, as far as the reflection pass is concerned.
         bool hud = GteDepth.Reflections && _kTarget is { IsPlanar: false } && AoGeometry.Active && !RetainedScene.UnderWorld
                    && !CoversTarget(r.X, r.Y, r.X + r.W, r.Y + r.H);
@@ -1327,8 +1316,6 @@ public sealed partial class GlCore : IGpuBackend
         Flush(FlushReason.Fill);
         _vram.Fill(x, y, w, h, color15);
         if (_check != null) { _check.Fill(x, y, w, h, color15); _check.Check(_vram, "fill", x, y, w, h, false); }
-        // TEMP. Which display targets this fill actually changed. Not a permanent API.
-        string applied = "";
         foreach (var rt in _rts)
         {
             if (rt == null || !rt.Intersects(x, y, w, h)) continue;
@@ -1338,19 +1325,12 @@ public sealed partial class GlCore : IGpuBackend
                 rt.Dirty = false;
                 rt.LastDrawFrame = _frame;
                 if (rt.Margin > 0) rt.MarginContentFlip = GpuHle.DisplayFlip;
-                applied = applied.Length == 0
-                    ? $"rt-clear:{rt.X},{rt.Y},{rt.W}x{rt.H}"
-                    : $"{applied}+rt-clear:{rt.X},{rt.Y},{rt.W}x{rt.H}";
             }
             else
             {
                 SyncRtFromVram(rt, x, y, w, h, fromSample: true);
-                applied = applied.Length == 0
-                    ? $"rt-blit:{rt.X},{rt.Y},{rt.W}x{rt.H}"
-                    : $"{applied}+rt-blit:{rt.X},{rt.Y},{rt.W}x{rt.H}";
             }
         }
-        GpuHle.TempFillApplied = applied.Length == 0 ? "vram-only" : applied;
     }
 
     void FillRtFull(GlDisplayRt rt, ushort color15)
@@ -1394,10 +1374,6 @@ public sealed partial class GlCore : IGpuBackend
         public uint Tex, Fbo;
         public ushort[] Data = [];
         public long Stamp;
-        // TEMP. The display target this copy was blitted from. SnapRestore does not
-        // read these; the match stays size, scale and the 15-bit bytes.
-        public int FromX, FromY, FromW, FromH;
-        public long FromFrame;
     }
 
     readonly VramSnap?[] _snaps = new VramSnap?[2];
@@ -1429,13 +1405,13 @@ public sealed partial class GlCore : IGpuBackend
 
     void SnapTake(int x, int y, int w, int h, ReadOnlySpan<ushort> px)
     {
-        if (!GlVram.Snapshots) { TempSnap("off"); return; }
+        if (!GlVram.Snapshots) return;
         int n = w * h;
-        if (w <= 0 || h <= 0 || n < SnapMinArea || px.Length < n) { TempSnap("skip"); return; }
+        if (w <= 0 || h <= 0 || n < SnapMinArea || px.Length < n) return;
         // Neither ReadRect nor WriteRect wraps, so a rect off the end of VRAM is
         // already undefined; do not carry one into a copy that could be restored
         // somewhere else entirely.
-        if (x < 0 || y < 0 || x + w > VramShadow.Width || y + h > VramShadow.Height) { TempSnap("skip"); return; }
+        if (x < 0 || y < 0 || x + w > VramShadow.Width || y + h > VramShadow.Height) return;
 
         // The scaled copy has to come from somewhere that holds these pixels now.
         // Since 0054 an upload reaches 1x sample VRAM and any target it touches, but
@@ -1449,7 +1425,6 @@ public sealed partial class GlCore : IGpuBackend
         {
             _snapRefused++;
             if ((long)w * h > (long)_snapRefusedW * _snapRefusedH) { _snapRefusedW = w; _snapRefusedH = h; }
-            TempSnap("refused");
             return;
         }
 
@@ -1478,11 +1453,6 @@ public sealed partial class GlCore : IGpuBackend
 
         px[..n].CopyTo(snap.Data);
         snap.Stamp = ++_snapStamp;
-        snap.FromX = src.X;
-        snap.FromY = src.Y;
-        snap.FromW = src.W;
-        snap.FromH = src.H;
-        snap.FromFrame = src.LastDrawFrame;
 
         _gl.Disable(EnableCap.ScissorTest);
         int sx = (x - src.X + src.Margin) * s, sy = (y - src.Y) * s;
@@ -1491,14 +1461,13 @@ public sealed partial class GlCore : IGpuBackend
         _gl.BlitFramebuffer(sx, sy, sx + w * s, sy + h * s,
             0, 0, w * s, h * s, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
-        TempSnap($"taken:{src.X},{src.Y},{src.W}x{src.H},f={src.LastDrawFrame}");
     }
 
     bool SnapRestore(int x, int y, int w, int h, ReadOnlySpan<ushort> px)
     {
-        if (!GlVram.Snapshots) { TempSnap("off"); return false; }
+        if (!GlVram.Snapshots) return false;
         int n = w * h;
-        if (w <= 0 || h <= 0 || n < SnapMinArea || px.Length < n) { TempSnap("skip"); return false; }
+        if (w <= 0 || h <= 0 || n < SnapMinArea || px.Length < n) return false;
 
         int s = GlVram.Scale;
         foreach (var snap in _snaps)
@@ -1506,7 +1475,6 @@ public sealed partial class GlCore : IGpuBackend
             if (snap is null || snap.W != w || snap.H != h || snap.Scale != s) continue;
             if (!px[..n].SequenceEqual(snap.Data)) continue;
 
-            TempSnap($"restore:{snap.FromX},{snap.FromY},{snap.FromW}x{snap.FromH},f={snap.FromFrame}");
             _gl.Disable(EnableCap.ScissorTest);
             _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, snap.Fbo);
             _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _vram.Fbo);
@@ -1535,7 +1503,6 @@ public sealed partial class GlCore : IGpuBackend
         }
         _snapMiss++;
         if ((long)w * h > (long)_snapMissW * _snapMissH) { _snapMissW = w; _snapMissH = h; }
-        TempSnap("miss");
         return false;
     }
 
@@ -1586,28 +1553,15 @@ public sealed partial class GlCore : IGpuBackend
     public void CopyVram(int sx, int sy, int dx, int dy, int w, int h)
     {
         Flush(FlushReason.Copy);
-        // TEMP. Sampled before the copy, which clears a source target's dirty bit.
-        bool writeback = TempAnyDirty(sx, sy, w, h);
-        bool sync = false;
-        foreach (var rt in _rts)
-            if (rt != null && rt.Intersects(dx, dy, w, h)) { sync = true; break; }
         WritebackDirtyIntersecting(sx, sy, w, h);
         _vram.CopyRect(sx, sy, dx, dy, w, h);
         if (_check != null) { _check.Copy(sx, sy, dx, dy, w, h); _check.Check(_vram, "copy", dx, dy, w, h, false); }
         SyncRtsFromVram(dx, dy, w, h);
-        GpuHle.TempMoveApplied = writeback
-            ? (sync ? "writeback+sync" : "writeback")
-            : (sync ? "sync" : "vram-only");
     }
 
     public void WriteVram(int x, int y, int w, int h, ReadOnlySpan<ushort> px)
     {
         Flush(FlushReason.Upload);
-        // TEMP. Captured after the flush, so a batch already queued into this
-        // target shows as dirty. The upload below then replaces the overlap.
-        bool image = GpuHle.TempImageOp;
-        string imageTarget = image ? TempTargets(x, y, w, h) : "";
-        if (image) GpuHle.TempSnapDetail = "none";
         // A restore of a frame this backend read out at scale writes the scaled
         // copy instead of the 1x pixels the game is handing back; everything else
         // uploads as it always did.
@@ -1624,14 +1578,6 @@ public sealed partial class GlCore : IGpuBackend
         }
         if (_check != null) { _check.Upload(x, y, w, h, px); _check.Check(_vram, restored ? "restore" : "upload", x, y, w, h, false); }
         SyncRtsFromVram(x, y, w, h, fromSample: !restored);
-        if (image)
-        {
-            bool hit = false;
-            foreach (var rt in _rts)
-                if (rt != null && rt.Intersects(x, y, w, h)) { hit = true; break; }
-            TempLogImage(x, y, w, h, px, imageTarget, "no", GpuHle.TempSnapDetail,
-                hit ? (restored ? "scaled" : "sample") : "none");
-        }
         SnapProbe();
     }
 
@@ -1658,94 +1604,9 @@ public sealed partial class GlCore : IGpuBackend
     public void ReadVram(int x, int y, int w, int h, Span<ushort> px, bool snapshot)
     {
         Flush(FlushReason.Readback);
-        // TEMP. Dirty is cleared by the writeback below, so the target list and
-        // the writeback answer are taken first. The pixels logged are the 1x sample.
-        bool image = GpuHle.TempImageOp;
-        string imageTarget = image ? TempTargets(x, y, w, h) : "";
-        string writeback = image ? (TempAnyDirty(x, y, w, h) ? "yes" : "no") : "";
-        if (image) GpuHle.TempSnapDetail = snapshot ? "none" : "off";
         WritebackDirtyIntersecting(x, y, w, h);
         _vram.ReadRect(x, y, w, h, px);
         if (snapshot) SnapTake(x, y, w, h, px);
-        if (image) TempLogImage(x, y, w, h, px, imageTarget, writeback, GpuHle.TempSnapDetail, "");
-    }
-
-    // TEMP. One line for a StoreImage that meets a display buffer, or for every
-    // LoadImage. Not a permanent API. writeback is whether a dirty target was
-    // copied into the 1x sample. snap is taken, restore, miss, refused, skip or
-    // off. sync is set on a load: scaled when the snapshot shortcut blitted the
-    // copy back, sample when the 1x upload was copied onto the target, none when
-    // the rectangle meets no target.
-    void TempLogImage(int x, int y, int w, int h, ReadOnlySpan<ushort> px, string target, string writeback, string snap, string sync)
-    {
-        if (!GpuHle.TempImageOp) return;
-        string op = GpuHle.TempImageKind;
-        GpuHle.TempImageOp = false;
-        string syncPart = sync.Length == 0 ? "" : $" sync={sync}";
-        Console.WriteLine(
-            $"[TEMP] image op={op} rect={x},{y},{w}x{h} buffers={TempBuffers()} target={target} writeback={writeback} snap={snap}{syncPart} sum=0x{TempSum(px, w, h):X8}");
-    }
-
-    void TempSnap(string detail)
-    {
-        if (GpuHle.TempImageOp) GpuHle.TempSnapDetail = detail;
-    }
-
-    static uint TempSum(ReadOnlySpan<ushort> px, int w, int h)
-    {
-        int n = px.Length;
-        long area = (long)w * h;
-        if (area >= 0 && area < n) n = (int)area;
-        uint sum = 2166136261;
-        for (int i = 0; i < n; i++)
-        {
-            ushort v = px[i];
-            sum ^= (byte)v;
-            sum *= 16777619;
-            sum ^= (byte)(v >> 8);
-            sum *= 16777619;
-        }
-        return sum;
-    }
-
-    string TempTargets(int x, int y, int w, int h)
-    {
-        string s = "";
-        foreach (var rt in _rts)
-        {
-            if (rt == null || !rt.Intersects(x, y, w, h)) continue;
-            bool full = x <= rt.X && y <= rt.Y && x + w >= rt.X + rt.W && y + h >= rt.Y + rt.H;
-            string one = $"{rt.X},{rt.Y},{rt.W}x{rt.H},f={rt.LastDrawFrame},dirty={(rt.Dirty ? 1 : 0)}{(full ? "" : ",part")}";
-            s = s.Length == 0 ? one : $"{s}+{one}";
-        }
-        return s.Length == 0 ? "none" : s;
-    }
-
-    bool TempAnyDirty(int x, int y, int w, int h)
-    {
-        foreach (var rt in _rts)
-            if (rt is { Dirty: true } && rt.Intersects(x, y, w, h)) return true;
-        return false;
-    }
-
-    string TempBuffers()
-    {
-        long best = -1;
-        int bestI = -1;
-        for (int i = 0; i < GpuHle.RectCount; i++)
-        {
-            var r = GpuHle.GetRect(i);
-            if (r.Valid && r.W > 0 && r.H > 0 && r.Stamp > best) { best = r.Stamp; bestI = i; }
-        }
-        string s = "";
-        for (int i = 0; i < GpuHle.RectCount; i++)
-        {
-            var r = GpuHle.GetRect(i);
-            string one = !r.Valid || r.W <= 0 || r.H <= 0 ? "none" : $"{r.X},{r.Y},{r.W}x{r.H}";
-            if (i == bestI) one += "*";
-            s = s.Length == 0 ? one : $"{s}|{one}";
-        }
-        return s;
     }
 
     public int RegisterImage(ReadOnlySpan<byte> rgba, int width, int height)
@@ -1767,21 +1628,10 @@ public sealed partial class GlCore : IGpuBackend
 
     public void Flush() => Flush(FlushReason.Other);
 
-    // TEMP. One line the first time a batch is drawn into 1x sample VRAM because
-    // its clip is not a display rect. Not a permanent API.
-    static readonly HashSet<(int x0, int y0, int x1, int y1)> _tempSampleClips = new();
-
-    void TempLogSampleClip()
-    {
-        if (!_tempSampleClips.Add((_kClipX0, _kClipY0, _kClipX1, _kClipY1))) return;
-        Console.WriteLine(
-            $"[TEMP] draw applied=queued-sample clip={_kClipX0},{_kClipY0}-{_kClipX1},{_kClipY1}");
-    }
 
     void Flush(FlushReason why)
     {
         if (_count == 0) return;
-        if (_kTarget == null) TempLogSampleClip();
 
         //0046.
         var trace = GpuTrace.Sink;

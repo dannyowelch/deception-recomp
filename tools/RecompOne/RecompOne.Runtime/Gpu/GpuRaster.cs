@@ -466,12 +466,8 @@ public sealed partial class Gpu
         return dy < 0 || (dy == 0 && dx > 0);
     }
 
-    void DrawRectangle(bool unalignedClear)
+    void DrawRectangle()
     {
-        // TEMP. PutDrawEnv sets this for the single rectangle that follows.
-        bool isbgClear = GpuHle.TempIsbgClear;
-        GpuHle.TempIsbgClear = false;
-
         uint cmd = _fifo[0];
         int sz = (int)((cmd >> 27) & 3);
         bool tex = (cmd & (1u << 26)) != 0;
@@ -506,33 +502,12 @@ public sealed partial class Gpu
             e.DrawLeft = _drawAreaLeft; e.DrawRight = _drawAreaRight; e.DrawTop = _drawAreaTop; e.DrawBottom = _drawAreaBottom;
             e.Textured = tex; e.SemiTransparent = semi; e.Gouraud = false; e.Raw = raw; e.Clut = clut; e.TexPage = 0; e.Skip = false;
             Event.Dispatch(e);
-            if (e.Skip)
-            {
-                TempLogClear(unalignedClear, isbgClear, x, y, w, h, cr, cg, cb, semi, tex, sz, "skipped", false);
-                return;
-            }
+            if (e.Skip) return;
             x = e.X[0]; w = e.X[1] - e.X[0];
         }
         if (HleOn)
         {
-            // TEMP. Ask the backend where this one rectangle was queued, then log
-            // only when it is a clear. Ordinary sprites do not print.
-            bool log = !Detached && !tex && sz == 0
-                && (unalignedClear || isbgClear || RectCoversClip(x, y, w, h));
-            if (log)
-            {
-                GpuHle.TempWantRectDest = true;
-                GpuHle.TempRectDest = "";
-            }
             HleRect(x, y, w, h, u0, v0, clut, cr, cg, cb, tex, semi, raw);
-            if (log)
-            {
-                GpuHle.TempWantRectDest = false;
-                string applied = RectHitsClip(x, y, w, h)
-                    ? (GpuHle.TempRectDest.Length == 0 ? "unknown" : GpuHle.TempRectDest)
-                    : "clipped";
-                TempLogClear(unalignedClear, isbgClear, x, y, w, h, cr, cg, cb, semi, tex, sz, applied, false);
-            }
             return;
         }
 
@@ -553,30 +528,7 @@ public sealed partial class Gpu
                 }
                 else Plot(px, py, cr, cg, cb, semi, false);
             }
-        bool hit = RectHitsClip(x, y, w, h);
-        TempLogClear(unalignedClear, isbgClear, x, y, w, h, cr, cg, cb, semi, tex, sz, hit ? "vram" : "clipped", hit);
     }
-
-    // TEMP. A clear is an unaligned ClearImage (the 0x60 after a full-VRAM clip
-    // reset), PutDrawEnv's isbg rectangle, or an untextured rectangle that covers
-    // the draw clip. vram is whether this path wrote emulated VRAM.
-    void TempLogClear(bool unalignedClear, bool isbgClear, int x, int y, int w, int h,
-        int r, int g, int b, bool semi, bool tex, int sz, string applied, bool vram)
-    {
-        if (Detached || tex || sz != 0) return;
-        if (!unalignedClear && !isbgClear && !RectCoversClip(x, y, w, h)) return;
-        string kind = isbgClear ? "isbg" : unalignedClear ? "unaligned" : "cover";
-        Console.WriteLine(
-            $"[TEMP] clear op=60 kind={kind} x={x} y={y} w={w} h={h} rgb={r},{g},{b} semi={(semi ? 1 : 0)} vram={(vram ? "yes" : "no")} applied={applied} clip={_drawAreaLeft},{_drawAreaTop}-{_drawAreaRight},{_drawAreaBottom}");
-    }
-
-    bool RectCoversClip(int x, int y, int w, int h) =>
-        w > 0 && h > 0 && x <= _drawAreaLeft && y <= _drawAreaTop
-        && x + w > _drawAreaRight && y + h > _drawAreaBottom;
-
-    bool RectHitsClip(int x, int y, int w, int h) =>
-        w > 0 && h > 0 && x <= _drawAreaRight && y + h > _drawAreaTop
-        && y <= _drawAreaBottom && x + w > _drawAreaLeft;
 
     void DrawLine()
     {

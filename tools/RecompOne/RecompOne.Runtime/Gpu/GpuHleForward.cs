@@ -109,13 +109,6 @@ public sealed partial class Gpu
         if (_readBuf.Length < n) _readBuf = new ushort[n];
         var buf = _readBuf;
 
-        // TEMP. The GL read logs this when the rectangle meets a display buffer.
-        if (GpuHle.TempTouchesDisplay(x, y, w, h))
-        {
-            GpuHle.TempImageOp = true;
-            GpuHle.TempImageKind = "store";
-        }
-
         if (Host.GpuJobs.Claimed && !Host.GpuJobs.IsOwner)
         {
             Host.GpuJobs.Run(() => GpuHle.Backend!.ReadVram(x, y, w, h, buf));
@@ -161,7 +154,6 @@ public sealed partial class Gpu
         var px = _hleLoad.AsSpan(0, _loadW * _loadH);
         if (_loadX + _loadW <= VramWidth && _loadY + _loadH <= VramHeight)
         {
-            TempArmLoad();
             be.WriteVram(_loadX, _loadY, _loadW, _loadH, px);
             return;
         }
@@ -184,15 +176,6 @@ public sealed partial class Gpu
         for (int r = 0; r < h; r++)
             px.Slice((row + r) * _loadW + col, w).CopyTo(_hlePiece.AsSpan(r * w, w));
         int dx = (_loadX + col) & (VramWidth - 1), dy = (_loadY + row) & (VramHeight - 1);
-        TempArmLoad();
         be.WriteVram(dx, dy, w, h, _hlePiece.AsSpan(0, w * h));
-    }
-
-    // TEMP. Arms the one GL upload that follows, including a load into VRAM that
-    // no display rect meets. The VRAM viewer reads through ReadVram and is not armed.
-    void TempArmLoad()
-    {
-        GpuHle.TempImageOp = true;
-        GpuHle.TempImageKind = "load";
     }
 }

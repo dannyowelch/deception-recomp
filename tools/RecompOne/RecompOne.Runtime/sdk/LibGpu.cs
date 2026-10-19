@@ -301,8 +301,6 @@ public static class LibGpu
             var w = Math.Clamp(clipW + margin * 2, 0, VramShadow.Width - 1);
             var h = Math.Clamp((int)clipH, 0, VramShadow.Height - 1);
             int x = clipX - margin - ofsX, y = clipY - ofsY;
-            // TEMP. The rectangle below is the background clear. DrawRectangle logs it.
-            GpuHle.TempIsbgClear = true;
             gpu.WriteGp0(0x60000000u | ((uint)b0 << 16) | ((uint)g0 << 8) | r0);
             gpu.WriteGp0(((uint)(ushort)y << 16) | (ushort)x);
             gpu.WriteGp0(((uint)(ushort)h << 16) | (ushort)w);

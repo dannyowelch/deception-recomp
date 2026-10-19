@@ -290,17 +290,9 @@ public static class InstructionEmitter
         void CallOrDispatch(uint addr, string ind)
         {
             if (ctx.KnownFunctions.TryGetValue(addr, out var name))
-            {
-                var probe = ctx.KokumeiProbe(addr, dispatched: false);
-                if (probe != null) sb.AppendLine(ctx.Trail(ctrl, $"{ind}{probe}"));
                 sb.AppendLine(ctx.Trail(ctrl, $"{ind}{name}(c, m);"));
-            }
             else
-            {
-                var probe = ctx.KokumeiProbe(addr, dispatched: true);
-                if (probe != null) sb.AppendLine(ctx.Trail(ctrl, $"{ind}{probe}"));
                 sb.AppendLine(ctx.Trail(ctrl, $"{ind}Dispatcher.Call(c, m, 0x{addr:X8}u);"));
-            }
         }
 
         bool InFunc(uint target)
@@ -480,26 +472,6 @@ public sealed class FunctionContext
     public HashSet<uint> LinkReturns = [];
     public MipsInstruction[] AllInstructions = [];
     public Dictionary<uint, uint> Relocations = [];
-
-    // TEMP. Kokumei recompiles used to wipe the hand-inserted probes in kokumei.cs.
-    // Emitted for that overlay only, before every constant call. A call into the
-    // 0x800B3578 slot is Dispatcher.Call (compiled-for "dispatch"). A direct call
-    // that still names a slot owner is probed with that overlay. Register jumps
-    // are left alone.
-    public bool ProbeKokumeiCalls;
-    public Dictionary<uint, string> SlotOwners = [];
-
-    public string? KokumeiProbe(uint addr, bool dispatched)
-    {
-        if (!ProbeKokumeiCalls) return null;
-        if (!dispatched)
-        {
-            if (!SlotOwners.TryGetValue(addr, out var slot)) return null;
-            return $"Dispatcher.TempKokumeiCall(c, \"{slot}\", 0x{addr:X8}u);";
-        }
-
-        return $"Dispatcher.TempKokumeiCall(c, \"dispatch\", 0x{addr:X8}u);";
-    }
 
     private const int CommentColumn = 64;
 

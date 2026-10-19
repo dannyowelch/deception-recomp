@@ -96,10 +96,6 @@ public static class Dispatcher
             already = _active.Remove(name);
         }
 
-        // TEMP: which thread loaded which overlay, including a reload of one already resident.
-        Console.WriteLine(
-            $"[TEMP] overlay load {name} thread={Environment.CurrentManagedThreadId} reload={already}");
-
         if (!already) HandleRegionOverwrites(name, overlay);
 
         lock (_active)
@@ -128,22 +124,7 @@ public static class Dispatcher
         // the functions HandleRegionOverwrites just hid.
         Rebuild();
         Runtime.OverlayLog.Record(name, OverlayEventKind.Loaded);
-        // TEMP: the guest range this overlay matched. Image [base, base+size) when
-        // the overlay has one; otherwise the span of the function entries it bound.
-        var lo = overlay.Base;
-        var hi = overlay.Base + overlay.Size;
-        if (overlay.Size == 0 && overlay.Functions.Count > 0)
-        {
-            lo = uint.MaxValue;
-            hi = 0;
-            foreach (var addr in overlay.Functions.Keys)
-            {
-                if (addr < lo) lo = addr;
-                if (addr >= hi) hi = addr + 4;
-            }
-        }
-
-        Console.WriteLine($"[Dispatcher] loaded overlay: {name} 0x{lo:X8}-0x{hi:X8}");
+        Console.WriteLine($"[Dispatcher] loaded overlay: {name}");
 
         if (Event.HasAnyListeners<OverlayLoadedEvent>())
         {
@@ -379,9 +360,6 @@ public static class Dispatcher
 
     private static readonly HashSet<uint> _reported = [];
 
-    // TEMP: one line per distinct kokumei-to-overlay situation. Remove with TempKokumeiCall.
-    private static readonly HashSet<string> _tempKokumeiSeen = new();
-
     private static bool IsReturnSite(IMemory m, uint addr)
     {
         if (addr < 0x80000008u || (addr & 3u) != 0) return false;
@@ -407,49 +385,6 @@ public static class Dispatcher
         var list = new uint[n];
         for (var i = 0; i < n; i++) list[i] = _recent[(at - n + i) & (RecentCalls - 1)];
         return list;
-    }
-
-    /// <summary>
-    /// TEMP. A kokumei constant call. The call that follows is unchanged.
-    /// Prints the class the call was compiled for ("dispatch" when the recompiler
-    /// emitted Dispatcher.Call), the overlay a dispatcher lookup would bind this
-    /// address to, and the overlays actually resident. One line per distinct
-    /// site, target, binding, resident set and thread.
-    /// </summary>
-    public static void TempKokumeiCall(CpuContext c, string compiledFor, uint addr)
-    {
-        string resident;
-        string slot;
-        string mapped;
-        lock (_active)
-        {
-            resident = _active.Count == 0 ? "(none)" : string.Join(",", _active);
-            var slotNames = new List<string>();
-            mapped = "(none)";
-            foreach (var n in _active)
-            {
-                var overlay = _registry[n];
-                if ((overlay.Base & 0x1FFFFFFFu) == 0x000B3578u)
-                    slotNames.Add(n);
-                if (_partial.TryGetValue(n, out var hidden) && hidden.ContainsKey(addr))
-                    continue;
-                if (overlay.Functions.ContainsKey(addr))
-                    mapped = n;
-            }
-
-            slot = slotNames.Count == 0 ? "(none)" : string.Join(",", slotNames);
-        }
-
-        var thread = Environment.CurrentManagedThreadId;
-        var site = c.RA;
-        var id = string.Concat(
-            compiledFor, "|", addr.ToString("X8"), "|", mapped, "|", slot, "|",
-            resident, "|", site.ToString("X8"), "|", thread.ToString());
-        lock (_tempKokumeiSeen)
-            if (!_tempKokumeiSeen.Add(id)) return;
-
-        Console.WriteLine(
-            $"[TEMP] kokumei call 0x{addr:X8} from=0x{site:X8} compiled-for={compiledFor} mapped={mapped} slot={slot} resident={resident} thread={thread}");
     }
 
     public static void Call(CpuContext c, IMemory m, uint addr)

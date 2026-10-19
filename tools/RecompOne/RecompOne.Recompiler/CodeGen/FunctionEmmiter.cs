@@ -76,10 +76,6 @@ public static class FunctionEmitter
             if (ctx.Labels.Contains(instr.Vram))
             {
                 body.AppendLine($"        L{instr.Vram:X8}: ;");
-                // TEMP. Kokumei's main loop. LibEtc prints it once a second with
-                // the vblank, VSync, and present counts. Not a permanent probe.
-                if (func.OverlayName == "kokumei" && instr.Vram == 0x800174ECu)
-                    body.AppendLine("        RecompOne.Runtime.Sdk.LibEtc.NoteGameLoop();");
                 if (ctx.BackEdges.Contains(instr.Vram))
                     body.AppendLine("        RecompOne.Runtime.Interrupts.Poll(c, m);");
             }
@@ -101,17 +97,9 @@ public static class FunctionEmitter
         {
             var target = ctx.SkipNopPadding(func.End);
             if (ctx.KnownFunctions.TryGetValue(target, out var fallthroughName))
-            {
-                var probe = ctx.KokumeiProbe(target, dispatched: false);
-                if (probe != null) body.AppendLine($"{ind}{probe}");
                 body.AppendLine($"{ind}{fallthroughName}(c, m);");
-            }
             else
-            {
-                var probe = ctx.KokumeiProbe(target, dispatched: true);
-                if (probe != null) body.AppendLine($"{ind}{probe}");
                 body.AppendLine($"{ind}Dispatcher.Call(c, m, 0x{target:X8}u);");
-            }
         }
 
         var text = body.ToString();
