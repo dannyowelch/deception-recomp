@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Deception
+GenericName=Deception
+Comment=A PC port of Tecmo's Deception (SLUS-00340). Requires your own disc image.
+Exec=DeceptionLauncher %f
+Icon=deception
+Terminal=false
+Categories=Game;
+Keywords=deception;tecmo;playstation;

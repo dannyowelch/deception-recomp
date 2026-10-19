@@ -1,9 +1,9 @@
 # Build the redistributable for Windows and Linux.
 #
-# The whole reason this can exist is that Verdite2.Launcher builds WITHOUT the
-# disc: it ships the inputs to a build (config/, and the port's own C#) and makes
-# the game on the player's machine from the image they own. So CI never needs,
-# never has and never handles game data.
+# The whole reason this can exist is that Deception.Launcher builds WITHOUT the
+# disc: it ships the inputs to a build (Deception.json, its funcmaps, and the
+# port's own C#) and makes the game on the player's machine from the image they
+# own. So CI never needs, never has and never handles game data.
 name: release
 
 on:
@@ -76,7 +76,7 @@ jobs:
       # being reachable from inside MSBuild on a Windows runner.
       - name: Stamp the build
         shell: bash
-        run: echo "VERDITE2_BUILD=$(git rev-parse --short=9 HEAD)" >> "$GITHUB_ENV"
+        run: echo "DECEPTION_BUILD=$(git rev-parse --short=9 HEAD)" >> "$GITHUB_ENV"
 
       - name: Package (Linux)
         if: matrix.name == 'linux'
@@ -97,7 +97,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: verdite2-${{ matrix.name }}
+          name: deception-${{ matrix.name }}
           path: |
             dist/*.AppImage
             dist/*.zip
@@ -118,21 +118,25 @@ jobs:
         with:
           files: dist/*
           draft: true
-          name: Verdite2 ${{ github.ref_name }}
+          name: Deception ${{ github.ref_name }}
           # Appended under the text below: the commits since the previous tag,
           # which is what makes a tag worth cutting rather than a number worth
           # remembering.
           generate_release_notes: true
           body: |
-            **Verdite2 ships no game data.** You need your own dump of King's
-            Field (NTSC-U, `SLUS-00158`) as a `.chd`, or as a `.cue` / `.bin` pair.
+            **Deception ships no game data.** You need your own dump of Tecmo's
+            Deception: Invitation to Darkness (NTSC-U, `SLUS-00340`) as a `.chd`,
+            or as a `.cue` / `.bin` pair.
 
-            On first launch Verdite2 asks for that image and builds the game from
-            it, which takes about fifteen seconds and happens once. Later launches
-            start straight away.
+            On first launch Deception asks for that image and builds the game from
+            it. Later launches start from that build.
 
-            Note that the US-boxed *King's Field II* (`SLUS-00255`) is a different
-            game and will be refused.
+            A different disc is refused. A different mastering of this disc is
+            rebuilt rather than served the previous build.
+
+            Windows is `Deception-<version>-win-x64.zip`: `Deception.exe` plus
+            `bin/`. Linux is `Deception-<version>-x86_64.AppImage`. The release
+            is a draft until it is published.
 
   # The preview: one prerelease under the tag `preview`, a build handed to
   # testers, replaced whole on every run, so there is never more than one and its
@@ -168,22 +172,22 @@ jobs:
           command -v 7z >/dev/null || { sudo apt-get update && sudo apt-get install -y p7zip-full; }
           sha="${GITHUB_SHA::9}"
           mkdir -p out stage/linux stage/setup stage/win
-          cp dist/*.AppImage "stage/linux/Verdite2-preview-$sha-x86_64.AppImage"
+          cp dist/*.AppImage "stage/linux/Deception-preview-$sha-x86_64.AppImage"
           chmod +x stage/linux/*.AppImage
-          cp dist/*setup.exe "stage/setup/Verdite2-preview-$sha-win-x64-setup.exe"
+          cp dist/*setup.exe "stage/setup/Deception-preview-$sha-win-x64-setup.exe"
           unzip -q dist/*-win-x64.zip -d stage/win
-          (cd stage/linux && 7z a -tzip -mem=AES256 "-p$PREVIEW_PASSWORD" ../../out/Verdite2-preview-linux-x86_64.zip . >/dev/null)
-          (cd stage/setup && 7z a -tzip -mem=AES256 "-p$PREVIEW_PASSWORD" ../../out/Verdite2-preview-win-x64-setup.zip . >/dev/null)
-          (cd stage/win && 7z a -tzip -mem=AES256 "-p$PREVIEW_PASSWORD" ../../out/Verdite2-preview-win-x64.zip . >/dev/null)
+          (cd stage/linux && 7z a -tzip -mem=AES256 "-p$PREVIEW_PASSWORD" ../../out/Deception-preview-linux-x86_64.zip . >/dev/null)
+          (cd stage/setup && 7z a -tzip -mem=AES256 "-p$PREVIEW_PASSWORD" ../../out/Deception-preview-win-x64-setup.zip . >/dev/null)
+          (cd stage/win && 7z a -tzip -mem=AES256 "-p$PREVIEW_PASSWORD" ../../out/Deception-preview-win-x64.zip . >/dev/null)
           for f in out/*.zip; do 7z t "-p$PREVIEW_PASSWORD" "$f" >/dev/null; done
           ls -la out
 
       - name: Replace the preview prerelease
         run: |
           cat > notes.md <<'NOTES'
-          **Preview builds are password protected.** Join the [Verdite Project Discord](https://discord.gg/R4EKCs8RWH) for access.
+          **Preview builds are password protected.**
 
-          **Always back up your saves before installing a preview build!** They are `carda.sav` and `cardb.sav`, in `%LOCALAPPDATA%\Verdite2` on Windows and `~/.local/share/verdite2` on Linux (`$XDG_DATA_HOME/verdite2` if that is set).
+          **Always back up your saves before installing a preview build!** They are `carda.sav` and `cardb.sav`, in `%LOCALAPPDATA%\Deception` on Windows and `~/.local/share/deception` on Linux (`$XDG_DATA_HOME/deception` if that is set). `DECEPTION_DATA` overrides that directory.
           NOTES
           gh release delete preview --cleanup-tag --yes 2>/dev/null || true
           # A tag left without its release (a run that died between the two, or
@@ -191,4 +195,4 @@ jobs:
           # would reuse it at its old commit, ignoring --target.
           gh api -X DELETE "repos/$GH_REPO/git/refs/tags/preview" 2>/dev/null || true
           gh release create preview out/*.zip --target "$GITHUB_SHA" --prerelease \
-            --title "Verdite2 preview (${GITHUB_SHA::9})" --notes-file notes.md
+            --title "Deception preview (${GITHUB_SHA::9})" --notes-file notes.md

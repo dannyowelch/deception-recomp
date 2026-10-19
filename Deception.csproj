@@ -15,7 +15,7 @@
           that committed stops firing for the rest of the session, measured 1 boot
           in 10 losing FramePacing's VSync or DrawOTag detour (6 in 10 with tier-up
           forced early), and 0 in 10 with this off. Costs about 2 s to the first
-          area and a few seconds of first-run dips. Verdite2.Launcher.csproj runs the
+          area and a few seconds of first-run dips. Deception.Launcher.csproj runs the
           game in its own process and must carry the same property. See "The
           smoothing is sometimes dead for a whole session" in docs/TODO.md.
         -->
@@ -85,7 +85,7 @@
     </ItemGroup>
 
     <!--
-      Verdite2.Launcher/ is the shipped executable and the opposite kind of project
+      Deception.Launcher/ is the shipped executable and the opposite kind of project
       to this one: it must build WITHOUT the disc, so it compiles none of
       generated/ and none of patches/ (it carries them as payload and compiles
       them at first run instead). Nested here its sources would be swept into this
@@ -93,9 +93,9 @@
       its obj/, which is the same trap tools/**, mods/** and mcp/** are removed for.
     -->
     <ItemGroup>
-        <Compile Remove="Verdite2.Launcher/**" />
-        <EmbeddedResource Remove="Verdite2.Launcher/**" />
-        <None Remove="Verdite2.Launcher/**" />
+        <Compile Remove="Deception.Launcher/**" />
+        <EmbeddedResource Remove="Deception.Launcher/**" />
+        <None Remove="Deception.Launcher/**" />
     </ItemGroup>
 
     <!--
@@ -117,7 +117,7 @@
       held is now Verdite Core's (tools/verdite-core/packaging/windows/Stub/, under
       the tools/** remove). The remove stays so that nothing staged here can become
       a source of this assembly: a project's obj/ AssemblyInfo.cs is CS0579, the
-      same trap tools/**, mcp/** and Verdite2.Launcher/** are removed for.
+      same trap tools/**, mcp/** and Deception.Launcher/** are removed for.
     -->
     <ItemGroup>
         <Compile Remove="packaging/**" />

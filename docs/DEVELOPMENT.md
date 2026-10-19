@@ -103,7 +103,7 @@ and its `obj/` AssemblyInfo files (CS0579 duplicate-attribute errors). Hence the
 `<Compile Remove="tools/**" />`, which also covers Verdite Core's Windows stub
 (`tools/verdite-core/packaging/windows/Stub/`, a net48 project whose `obj/` appears
 the moment anyone has built the Windows package). The same trap is `mcp/` and
-`Verdite2.Launcher/`. Conversely, `generated/` and `patches/`
+`Deception.Launcher/`. Conversely, `generated/` and `patches/`
 need *no* explicit include — adding one causes NETSDK1022.
 
 

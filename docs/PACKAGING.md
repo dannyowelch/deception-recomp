@@ -30,28 +30,31 @@ per-user recompile reads those LBAs off the player's own image.
 
 | project | builds without the disc | what it is |
 |---|---|---|
-| `Verdite2.Launcher/Verdite2.Launcher.csproj` | **yes** | the shipped executable |
+| `Deception.Launcher/Deception.Launcher.csproj` | **yes** | the shipped executable |
 | `Deception.csproj` | no | the developer path, unchanged |
 
 They are opposites on purpose. `Deception.csproj` compiles `generated/`
-and `patches/` through the SDK's default globs, which is what makes iteration
-incremental and is why nothing about the developer workflow changed. The launcher
-compiles neither: it carries them as *payload* and compiles them at first run.
+through the SDK's default globs, which is what makes iteration incremental.
+The launcher compiles neither `generated/` nor `patches/`: King's Field's
+`patches/` call `Recompiled.KingsField2` and are not this port. It carries
+Deception's inputs as *payload* and compiles them at first run.
 
-**The launcher's code is Verdite Core's** (`tools/verdite-core/launcher/`, since
-2026-10-05), shared with Verdite3. `Verdite2.Launcher/` holds only a csproj that
-names the executable and imports `Launcher.targets`, and a `Program.cs` that hands
-`Launcher.Run` this port's record: `Verdite2`/`verdite2`, *King's Field*,
-`SLUS-00158`, the `SLUS-00255` message, `kf2.json`, `KingsField2`,
-`Voicedrew11/verdite2`, and which overlays are play. Everything below that names a
-launcher file (`Paths`, `DiscCheck`, `BuildKey`, `Recompile`, `GameCompile`,
-`UpdateCheck`, the popups) means core's copy; Verdite Core's README describes the
-split. Two things are derived there rather than written here: the disc files the
-check requires and the build key hashes are every overlay `file` in `kf2.json`,
-each at least as long as its furthest `offset + skip + size` (the same
-`SYSTEM.CNF`, `SLUS_001.58`, three `.EXE`s at `0x800` and `FDAT.T` from its last
-slice that were listed by hand), and the localisation keys are `verdite.build.*`
-and `verdite.update.*` with the port's name filled in.
+**The launcher's code is Verdite Core's** (`tools/verdite-core/launcher/`).
+`Deception.Launcher/` holds a csproj that names the executable and imports
+`Launcher.targets`, and a `Program.cs` that hands `Launcher.Run` this port's
+record: `Deception`/`deception`, `SLUS-00340`, `Deception.json`, game assembly
+`Deception`, `dannyowelch/deception-recomp` (notify only), and which overlays
+are play. The launcher assembly itself is `DeceptionLauncher`, because the game
+dll is `Deception.dll` and both cannot share a simple name in the default load
+context. The player-facing Windows stub is still `Deception.exe`. Everything
+below that names a launcher file (`Paths`, `DiscCheck`, `BuildKey`, `Recompile`,
+`GameCompile`, `UpdateCheck`, the popups) means core's copy. The disc files the
+check requires, and the bytes the build key hashes, are every overlay `file` in
+`Deception.json`, each at least as long as its furthest `offset + skip + size`.
+The key also hashes each of those files' LBA and size, so a remaster that moves
+the same bytes is rebuilt instead of served the other mastering's dll. A
+different serial is refused before that. The localisation keys are
+`verdite.build.*` and `verdite.update.*` with the port's name filled in.
 
 Measured on the move, an AppImage built by core's script and run on an empty data
 folder (`VERDITE2_DATA`) with `VERDITE2_UPDATE_CHECK=force`: `[Verdite2]
@@ -70,20 +73,16 @@ exists.
 
 Beside the executable, `content/`:
 
-- `content/config/` — `kf2.json` and the thirteen funcmaps. Addresses, names and
-  sizes; no disc bytes.
-- `content/src/` — `Program.cs`, `patches/**` and Verdite Core's C#
-  (`tools/verdite-core/src/**`, under `content/src/verdite-core/`), as source text.
-  `Sources.All()` walks it recursively, so `GameCompile` compiles core and
-  `BuildKey` hashes it: a core change rebuilds the game like a patch change.
-  (Core's `launcher/` is the launcher itself, not payload.)
-- `content/mods/` — copied into the data directory the first time each file is
-  seen. `.mods-seeded` records the relative paths that have ever been seeded,
-  rather than being a bare "seeding has happened" marker: a mod the player has
-  deleted stays deleted because its path is in the record, and a mod a later
-  release adds is still seeded because its path is not. A bare marker gets the
-  first of those right and the second wrong, silently — nothing reports a mod
-  that never arrived.
+- `content/config/` — `Deception.json` and its funcmaps (`main`, `open`, `enty`,
+  `plan`, `staff`, `title`, `kokumei`, `bin_3dmd`), as siblings, because the
+  config's `funcMap` paths are relative to the config file. Addresses and names;
+  no disc bytes. Not `kf2.json`, not the King's Field funcmaps, not
+  `config/generated`.
+- `content/src/` — `Program.cs`, `InputSupport.cs`, `LegacyData.cs` and Verdite
+  Core's C# (`tools/verdite-core/src/**`, under `content/src/verdite-core/`), as
+  source text. `patches/` and `mods/` are not in the payload. `Sources.All()`
+  walks `content/src` recursively, so `GameCompile` compiles core and `BuildKey`
+  hashes it. (Core's `launcher/` is the launcher itself, not payload.)
 
 Plus `RecompOne.Runtime.dll`, `recompone.dll`, Roslyn and the self-contained .NET
 runtime. About 109 MB laid out, 41 MB as an AppImage.
@@ -101,19 +100,24 @@ not next to the apphost, which is how a developer run and the AppImage (payload
 still beside the executable) keep working. The zip and the install directory look like:
 
 ```
-Verdite2.exe    the stub
-bin/            the self-contained runtime and the real apphost
-content/        config, sources, shipped mods
-licenses/
+Deception.exe          the stub; it starts bin\DeceptionLauncher.exe
+bin/                   the self-contained runtime and the real apphost
+content/               Deception.json, funcmaps, sources
+licenses/              this repo's MIT, RecompOne, verdite-core, NotoSans-OFL
+version.txt            the tag, MAJOR.MINOR.PATCH (0.0.0 with no version tag)
 ```
 
-**And the licences the artifact is obliged to carry**, which until the interface
-font arrived it did not have: `tools/RecompOne/patches/0033` embeds Noto Sans in
-`RecompOne.Runtime.dll`, and SIL OFL 1.1 requires the licence to travel with the
-font. Both packaging scripts now stage `LICENSE` and `NotoSans-OFL.txt` — under
-`usr/share/doc/verdite2/` in the AppImage, under `licenses/` in the zip. Adding a
-third-party asset to the build means adding its licence here; nothing checks
-this.
+**The licences the artifact carries:** this repository's MIT (`LICENSE`),
+`tools/RecompOne/LICENSE`, `tools/verdite-core/LICENSE`, and `NotoSans-OFL.txt`.
+`tools/RecompOne/patches/0033` embeds Noto Sans in `RecompOne.Runtime.dll`, and
+SIL OFL 1.1 requires that licence to travel with the font. Both packaging
+scripts stage the four files under `licenses/` (and, in the AppImage, the same
+four under `usr/share/doc/deception/`). `version.txt` is the same number the
+zip and the AppImage are named with. Adding a third-party asset to the build
+means adding its licence here.
+
+`UpdateCheck` reads `https://api.github.com/repos/dannyowelch/deception-recomp/releases/latest`
+and only notifies. It does not download a release.
 
 ## First run
 
@@ -123,15 +127,13 @@ this.
    `interface.ini`, `carda.sav`, `cardb.sav`, `carda.fog`, `mods/.cache` — so they
    all resolve there and none of them needed a patch.
 
-   `%LOCALAPPDATA%\Verdite2`, or `$XDG_DATA_HOME/verdite2` else
-   `~/.local/share/verdite2`. `VERDITE2_DATA` overrides it.
+   `%LOCALAPPDATA%\Deception`, or `$XDG_DATA_HOME/deception` else
+   `~/.local/share/deception`. `DECEPTION_DATA` overrides it.
 
-2. `Runtime.DiscValidator = DiscCheck.Validate`. **That slot has existed since the
-   runtime was written and nothing ever filled it**, so until now any file at all
-   was accepted. It checks `SYSTEM.CNF` boots `SLUS_001.58` and that the four
-   files the recompile reads are present and long enough, and it names
-   `SLUS-00255` explicitly — the US-boxed *King's Field II* is a different game,
-   is what most people will reach for, and would otherwise build.
+2. `Runtime.DiscValidator = DiscCheck.Validate`. It checks `SYSTEM.CNF` boots
+   `SLUS_003.40` and that every file `Deception.json` slices is present and at
+   least as long as its furthest slice. King's Field `SLUS-00158` and
+   `SLUS-00255` are named; any other serial is refused as not this disc.
 
 3. `Runtime.WaitForValidDisc()` — the runtime's own picker, which already opens a
    native file dialog and saves the accepted path. It needed nothing but the
@@ -150,14 +152,14 @@ this.
    silently fail to load its area modules, which is the exact failure the per-user
    recompile exists to prevent. Whatever is played is what is keyed and built.
 
-5. If `builds/<key>/KingsField2.dll` is absent, build it. `BuildKey` hashes the
-   three executables and `FDAT.T` off the disc (not the file: an image can differ
-   in padding, track layout or the 180 MB of streamed media and still recompile
-   identically), the shipped sources **and the shipped config**, and the
-   launcher's version. `content/config` is in there because it is the other half
-   of what goes into the build — the function maps decide where each function
-   starts and the SDK map decides which are bound to the runtime's HLE, so a
-   corrected sweep changes the emitted C# with no source file having moved.
+5. If `builds/<key>/Deception.dll` is absent, build it. `BuildKey` hashes
+   `SYSTEM.CNF`, the boot file and every overlay file (not the whole image: an
+   image can differ in padding or streamed media and still recompile
+   identically), each of those files' LBA and size, the shipped sources **and
+   the shipped config**, and the launcher's version. A remaster whose files
+   moved misses the cache. `content/config` is in the key because the function
+   maps decide where each function starts and the SDK map decides which are
+   bound to the runtime's HLE.
 
 6. `Recompile.Run` drives the recompiler **in process** through
    `Assembly.EntryPoint` — its `Program.cs` is top-level statements, so its entry

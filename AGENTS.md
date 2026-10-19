@@ -336,11 +336,11 @@ config/funcmaps/*.json   swept function maps (address/name/size; size is mandato
 patches/                 hand-written C# replacing recompiled functions
 mods/<id>/               runtime-loaded mods (mod.json + C#, Roslyn-compiled)
 mcp/                     stdio MCP server exposing the KF2_SHELL command channel as tools to MCP hosts
-Verdite2.Launcher/       the SHIPPED executable: Verdite Core's launcher under this
+Deception.Launcher/     the SHIPPED executable: Verdite Core's launcher under this
                          port's names (one Program.cs and a csproj importing
                          tools/verdite-core/launcher/Launcher.targets); builds with
                          no disc, and makes the game at first run from the player's
-                         own image. See docs/PACKAGING.md
+                         own image. Assembly DeceptionLauncher. See docs/PACKAGING.md
 packaging/               package.env (this port's names for Verdite Core's packaging),
                          the icons and desktop entry, and wrappers of the core scripts
 tools/RecompOne/patches/*.patch  the record of the port's changes to RecompOne
@@ -461,7 +461,7 @@ goes through `Psx/Parser.cs`, which strips the header itself.
 `generated/` and `patches/` are picked up by the SDK's default globs — adding an
 explicit `Compile Include` causes NETSDK1022. `tools/**` must stay explicitly
 removed, or the build compiles RecompOne's own sources and its `obj/`
-AssemblyInfo files (CS0579); `mods/**`, `mcp/**` and `Verdite2.Launcher/` are
+AssemblyInfo files (CS0579); `mods/**`, `mcp/**` and `Deception.Launcher/` are
 removed for the same reason.
 
 ## The RecompOne checkout
@@ -515,21 +515,22 @@ patch's code or amending it. Neither is imported, for size.
 ## Shipping it
 
 **The port cannot ship a playable binary.** `generated/` is a translation of
-FromSoftware's code, so the assembly that plays the game has to be built on the
-machine of somebody who owns the disc. The release ships every **input** —
-`config/`, `patches/**`, `Program.cs`, the RecompOne subtree — and makes the
-output at first run. That is also a correctness win: the generated dispatch tables
-bake **absolute LBAs from one mastering**, so a prebuilt binary would silently
-fail to load area modules on a differently mastered dump.
+the game's code, so the assembly that plays the game has to be built on the
+machine of somebody who owns the disc. The release ships Deception's **inputs**
+— `Deception.json`, its funcmaps, `Program.cs`, `InputSupport.cs`,
+`LegacyData.cs`, Verdite Core's `src/` — and makes the output at first run.
+`patches/`, `mods/`, `kf2.json` and `config/generated` are not in that payload.
+The generated dispatch tables bake **absolute LBAs from one mastering**, so the
+build key includes each overlay file's LBA: a different mastering misses the
+cache and is rebuilt. A different serial is refused.
 
-- **`Verdite2.Launcher/` is the shipped executable and compiles neither
-  `generated/` nor `patches/`** — it carries them as payload under `content/` and
-  compiles them at first run. Its code is Verdite Core's `launcher/`, shared with
-  Verdite3; `Verdite2.Launcher/Program.cs` is the one record of this port's names,
-  serial, wrong discs and update repository, and a change to the shell is a
-  `tools/verdite-core` commit like any other. Anything added there must keep that property;
-  `.github/workflows/ci.yml` asserts it on every push, because it is invisible
-  locally where `generated/` exists.
+- **`Deception.Launcher/` is the shipped executable and compiles neither
+  `generated/` nor `patches/`** — it carries Deception's inputs as payload under
+  `content/` and compiles them at first run. Its code is Verdite Core's
+  `launcher/`. `Deception.Launcher/Program.cs` is the one record of this port's
+  names, serial `SLUS-00340`, `Deception.json`, and
+  `dannyowelch/deception-recomp`. The launcher assembly is `DeceptionLauncher`
+  so it can load the game `Deception.dll`. CI asserts the payload on every push.
 - **The recompiled output and the port's sources compile in ONE Roslyn pass**
   (core's `GameCompile`). Its reference set comes from `TRUSTED_PLATFORM_ASSEMBLIES`, not
   loaded assemblies, and it supplies `GlobalUsings.g.cs` itself, since
@@ -547,12 +548,12 @@ fail to load area modules on a differently mastered dump.
   **Trimming is off and must stay off** (MonoMod detours, Roslyn, `AutoStart`'s
   reflection).
 - **QuickJit is off and must stay off, in both `Deception.csproj` and
-  `Verdite2.Launcher.csproj`** (`TieredCompilationQuickJit`). Tier-up recompiles a
-  hooked method and MonoMod's detour does not reliably follow, so a committed hook
-  stops firing for the session with `IsCommitted` still true — that was the boot
-  that ran at twice the chosen rate. `FramePacing`'s sentinel prints
-  `[KF2] pacing sentinel:` if a pacing hook is ever lost again. `DiscCheck.Validate` fills `Runtime.DiscValidator` and refuses
-  `SLUS-00255` by name.
+  `Deception.Launcher.csproj`** (the latter via `Launcher.targets`,
+  `TieredCompilationQuickJit`). Tier-up recompiles a hooked method and MonoMod's
+  detour does not reliably follow, so a committed hook stops firing for the
+  session with `IsCommitted` still true. `DiscCheck.Validate` fills
+  `Runtime.DiscValidator` and refuses a disc that does not boot `SLUS_003.40`,
+  naming King's Field `SLUS-00158` and `SLUS-00255` when that is what was inserted.
 
 See `docs/PACKAGING.md`.
 

@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      The shipped executable: Verdite Core's launcher (tools/verdite-core/launcher)
+      under this port's names, with Program.cs handing it the one record it needs.
+      Everything else - the payload, the version stamp, the build options that must
+      match Deception.csproj - is in Launcher.targets, shared with the other
+      ports. See docs/PACKAGING.md.
+
+      AssemblyName is DeceptionLauncher, not Deception. The game compiled at first
+      run is Deception.dll (GameAssembly, and Deception.csproj), and it is loaded
+      into this process's default context. Two assemblies with that simple name
+      cannot both live there. The player-facing stub is still Deception.exe;
+      packaging/package.env LAUNCHER_ASSEMBLY names the apphost the stub starts.
+    -->
+    <PropertyGroup>
+        <AssemblyName>DeceptionLauncher</AssemblyName>
+        <RootNamespace>Deception.Launcher</RootNamespace>
+        <VerditeAppId>deception</VerditeAppId>
+        <VerditeEnvPrefix>DECEPTION_</VerditeEnvPrefix>
+
+        <!--
+          No ApplicationIcon: the port has no mark of its own. Its icon is the
+          card icon off the player's disc, which no file shipped can carry; the
+          game points the shortcuts at it (docs/PACKAGING.md, "The icon comes off
+          the disc").
+        -->
+    </PropertyGroup>
+
+    <Import Project="../tools/verdite-core/launcher/Launcher.targets" />
+
+    <!--
+      Launcher.targets stages every config json, patches/** and mods/**. That
+      would ship King's Field (kf2.json, its funcmaps, patches/) beside this port
+      and would compile those patches against Deception's generated code. Drop
+      the shared globs, then put back only this game's inputs. Program.cs and
+      tools/verdite-core/src stay on the shared includes.
+      config/generated is the recompiler's output and is not in those globs;
+      CI still refuses it if it ever lands in content/.
+    -->
+    <ItemGroup>
+        <Content Remove="$(VerditeGameRoot)config/**/*.json" />
+        <Content Remove="$(VerditeGameRoot)patches/**/*.cs" />
+        <Content Remove="$(VerditeGameRoot)mods/**/*" />
+
+        <Content Include="$(VerditeGameRoot)config\deception.json\Deception.json"
+                 Link="content/config/Deception.json"
+                 CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="$(VerditeGameRoot)config\deception.json\funcmaps\*.json"
+                 LinkBase="content/config/funcmaps"
+                 CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="$(VerditeGameRoot)InputSupport.cs"
+                 Link="content/src/InputSupport.cs"
+                 CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="$(VerditeGameRoot)LegacyData.cs"
+                 Link="content/src/LegacyData.cs"
+                 CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+</Project>

@@ -2,7 +2,7 @@
 #
 # That is the one property the whole release story rests on, and it is easy to
 # break by accident -- a using directive in the launcher that reaches into
-# generated/, or a source file dropped into Verdite2.Launcher/ that the default
+# generated/, or a source file dropped into Deception.Launcher/ that the default
 # glob then compiles. Neither shows up locally, where generated/ exists.
 name: ci
 
@@ -41,19 +41,19 @@ jobs:
       - name: Assert one source of the version
         run: |
           test ! -e VERSION || { echo "VERSION exists; the tags are the version"; exit 1; }
-          grep -q '<Version>[0-9]' Verdite2.Launcher/Verdite2.Launcher.csproj \
+          grep -q '<Version>[0-9]' Deception.Launcher/Deception.Launcher.csproj \
             && { echo "the csproj declares a literal version; the tags are the source"; exit 1; } || true
           echo "version=$(bash tools/verdite-core/scripts/version.sh)"
 
       - name: Build the launcher with no disc
-        run: dotnet build Verdite2.Launcher/Verdite2.Launcher.csproj -c Release
+        run: dotnet build Deception.Launcher/Deception.Launcher.csproj -c Release
 
       # That the number reaches the assembly, which is what the packaging names
       # its files after and what the launcher prints at startup.
       - name: Assert the build carries it
         run: |
           v="$(bash tools/verdite-core/scripts/version.sh)"
-          dll=Verdite2.Launcher/bin/Release/net10.0/Verdite2.dll
+          dll=Deception.Launcher/bin/Release/net10.0/DeceptionLauncher.dll
           got=$(strings "$dll" | grep -oE "^$v\+[0-9a-f]{9}$" | head -1)
           echo "informational version: ${got:-<none>}"
           test -n "$got" || { echo "the assembly does not carry $v plus a commit"; exit 1; }
@@ -66,7 +66,7 @@ jobs:
       # file planted there is set aside, not compiled. The launcher is killed by
       # the timeout at the disc picker; the line is printed before the window.
       - name: Publish the launcher
-        run: dotnet publish Verdite2.Launcher/Verdite2.Launcher.csproj -c Release -o out
+        run: dotnet publish Deception.Launcher/Deception.Launcher.csproj -c Release -o out
 
       - name: Assert the manifest lists exactly the shipped content
         working-directory: out
@@ -76,13 +76,46 @@ jobs:
                <(find content -type f ! -path content/manifest.txt | sort) \
             || { echo "content/manifest.txt does not match content/"; exit 1; }
 
+      # The payload is Deception's inputs only. King's Field config, the
+      # recompiler's generated output, and any disc image must not be in it.
+      # patches/ and mods/ are the King's Field port and are not shipped either.
+      - name: Assert the payload is Deception's and nothing from the disc
+        working-directory: out
+        run: |
+          fail() { echo "payload: $1"; exit 1; }
+          test -f content/config/Deception.json || fail "missing content/config/Deception.json"
+          maps="bin_3dmd.json enty.json kokumei.json main.json open.json plan.json staff.json title.json"
+          for m in $maps; do
+            test -f "content/config/funcmaps/$m" || fail "missing content/config/funcmaps/$m"
+          done
+          got=$(find content/config/funcmaps -type f -printf '%f\n' | sort | tr '\n' ' ')
+          want=$(printf '%s\n' $maps | sort | tr '\n' ' ')
+          test "$got" = "$want" || fail "funcmaps are '$got', want '$want'"
+          test -f content/src/Program.cs || fail "missing Program.cs"
+          test -f content/src/InputSupport.cs || fail "missing InputSupport.cs"
+          test -f content/src/LegacyData.cs || fail "missing LegacyData.cs"
+          test -n "$(find content/src/verdite-core -name '*.cs' -print -quit)" || fail "missing verdite-core src"
+          if find content -type f -iname 'kf2.json' -o -iname 'onboarding.json' -o -iname 'verdite.json' | grep -q .; then
+            fail "King's Field config is in content/"
+          fi
+          if find content/config -type f \( -name 'end.json' -o -name 'game.json' -o -name 'fdat*.json' \) | grep -q .; then
+            fail "King's Field funcmaps are in content/config"
+          fi
+          if find content -type d \( -name generated -o -name patches -o -name mods \) | grep -q .; then
+            fail "generated/, patches/, or mods/ is in content/"
+          fi
+          if find . -type f \( -iname '*.cue' -o -iname '*.chd' -o -iname '*.iso' -o -iname '*.img' -o -iname '*.ccd' -o -iname '*.mds' -o -iname '*.bin' -o -iname 'SYSTEM.CNF' \) | grep -q .; then
+            fail "a disc file is in the publish"
+          fi
+          echo "payload ok"
+
       - name: Assert a file left by an older release is not built
         run: |
-          echo '#error left by an older release' > out/content/src/patches/Stale.cs
-          VERDITE2_DATA="$RUNNER_TEMP/data" VERDITE2_UPDATE_CHECK=0 \
-            timeout 30 dotnet out/Verdite2.dll > launch.log 2>&1 || true
+          echo '#error left by an older release' > out/content/src/Stale.cs
+          DECEPTION_DATA="$RUNNER_TEMP/data" DECEPTION_UPDATE_CHECK=0 \
+            timeout 30 dotnet out/DeceptionLauncher.dll > launch.log 2>&1 || true
           head -20 launch.log
-          grep -qx '\[Verdite2\]   src/patches/Stale.cs' launch.log \
+          grep -qx '\[Deception\]   src/Stale.cs' launch.log \
             || { echo "the launcher did not set aside a file the release did not ship"; exit 1; }
 
       # The Windows package's root exe is this stub, not the self-contained
@@ -90,7 +123,7 @@ jobs:
       # job that actually publishes the zip. It has no icon: the port ships no
       # mark, and the game points the shortcuts at the card icon it reads.
       - name: Build the Windows stub
-        run: dotnet build tools/verdite-core/packaging/windows/Stub/Verdite.Stub.csproj -c Release -p:StubName=Verdite2
+        run: dotnet build tools/verdite-core/packaging/windows/Stub/Verdite.Stub.csproj -c Release -p:StubName=Deception -p:StubChild=DeceptionLauncher
 
       # Deception.csproj is deliberately NOT built here: it compiles
       # generated/ and so cannot build without the disc, by design.
