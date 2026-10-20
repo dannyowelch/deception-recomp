@@ -18,15 +18,20 @@ public static class GraphicsOptions
     public const string MipKey = "Mipmaps";
     public const string FrameKey = "Frame";
     public const string HideBordersKey = "HideBorders";
+    public const string ScaleKey = "WindowScale";
 
     const float SixteenNine = 16f / 9f;
+    const int PictureW = 320;
+    const int PictureH = 240;
 
     static readonly int[] Levels = [1, 2, 4, 8, 16];
     static readonly string[] AnisoLabels = ["1 (off)", "2", "4", "8", "16"];
     static readonly string[] FrameLabels = ["4:3", "16:9"];
+    static readonly string[] ScaleLabels = new string[8];
 
     static bool _wide = true;
     static bool _hide;
+    static int _scale = 3;
     static bool _tried;
     static uint _left, _right;
 
@@ -44,9 +49,13 @@ public static class GraphicsOptions
         GteDepth.Mipmaps = ConfigManager.View.GetBool(MipKey, true);
         _wide = ConfigManager.View.GetString(FrameKey, "16:9") == "16:9";
         _hide = ConfigManager.View.GetBool(HideBordersKey, false);
+        _scale = Math.Clamp(ConfigManager.View.GetInt(ScaleKey, 3), 1, 8);
         Push();
+        FitWindow();
+        var (w, h) = ContentSize();
         Console.WriteLine($"[deception] aniso {GteDepth.Anisotropy}, mipmaps {(GteDepth.Mipmaps ? "on" : "off")}, " +
-                          $"frame {(_wide ? "16:9" : "4:3")}, borders {(_wide && !_hide ? "on" : "off")}");
+                          $"frame {(_wide ? "16:9" : "4:3")}, borders {(_wide && !_hide ? "on" : "off")}, " +
+                          $"window {_scale}x ({w}x{h})");
     }
 
     static void Draw()
@@ -73,6 +82,19 @@ public static class GraphicsOptions
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("A mip chain for minified textures. Texture windows skip it.");
 
+        FillScaleLabels();
+        int scale = _scale - 1;
+        if (ImGui.Combo("Window size", ref scale, ScaleLabels, ScaleLabels.Length))
+        {
+            _scale = scale + 1;
+            ConfigManager.View.SetInt(ScaleKey, _scale);
+            ConfigManager.SaveView(PanelManager.Panels);
+            FitWindow();
+        }
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("The picture is 320×240 times this. Render scale is the detail inside it. The menu bar sits outside this size.");
+
         int frame = _wide ? 1 : 0;
         if (ImGui.Combo("Frame", ref frame, FrameLabels, FrameLabels.Length))
         {
@@ -80,10 +102,11 @@ public static class GraphicsOptions
             ConfigManager.View.SetString(FrameKey, _wide ? "16:9" : "4:3");
             ConfigManager.SaveView(PanelManager.Panels);
             Push();
+            FitWindow();
         }
 
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("16:9 draws the side art when the window is wide. 4:3 leaves those columns black.");
+            ImGui.SetTooltip("16:9 widens the window around the picture and draws the side art. 4:3 fits the window to the picture.");
 
         if (!_wide) ImGui.BeginDisabled();
         if (ImGui.Checkbox("Hide borders", ref _hide))
@@ -135,6 +158,29 @@ public static class GraphicsOptions
 
     static void Push() =>
         OutputView.SetSideBorders(_wide ? SixteenNine : 0f, _wide && !_hide, _left, _right);
+
+    static void FitWindow()
+    {
+        var (w, h) = ContentSize();
+        HostWindow.SetContentSize(w, h);
+    }
+
+    static (int W, int H) ContentSize()
+    {
+        int height = PictureH * _scale;
+        int width = _wide ? (int)MathF.Round(height * SixteenNine) : PictureW * _scale;
+        return (width, height);
+    }
+
+    static void FillScaleLabels()
+    {
+        for (int i = 1; i <= ScaleLabels.Length; i++)
+        {
+            int height = PictureH * i;
+            int width = _wide ? (int)MathF.Round(height * SixteenNine) : PictureW * i;
+            ScaleLabels[i - 1] = $"{i}x  {width}x{height}";
+        }
+    }
 
     static int Snap(int n)
     {

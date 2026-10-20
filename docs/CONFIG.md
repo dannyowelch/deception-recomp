@@ -100,7 +100,8 @@ The `[RecompOne]` section is the display. A missing key uses the fallback.
 | `RenderScale` | `4`, clamped to 1..8 |
 | `Anisotropy` | `16`. One of `1`, `2`, `4`, `8`, `16`. `1` is the console's single texel |
 | `Mipmaps` | `True` |
-| `Frame` | `16:9`. `4:3` leaves the side columns black |
+| `WindowScale` | `3`, clamped to 1..8. The picture is 320×240 times this. The menu bar is not part of that area |
+| `Frame` | `16:9`. `4:3` fits the window to the picture and leaves no side columns |
 | `HideBorders` | `False`. With `Frame` at `16:9`, the side columns stay black |
 | `GpuBackend` | `auto`. Also `gl45`, `gl33`, `gl21`. Applied on the next launch |
 | `VSync` | `false` |
@@ -109,6 +110,6 @@ The `[RecompOne]` section is the display. A missing key uses the fallback.
 | `ShowFps`, `HideTopBar`, `AutoHideMenuBar` | `false` |
 | `Language`, `Accent`, `Background` | empty |
 
-The window opens at 1280x720.
+The window opens so the area under the menu bar matches `Frame` at `WindowScale`. `3` and `16:9` is 1280×720 under the bar. Showing or hiding the menu bar (F1) changes the window height by the bar and leaves that area alone. Render scale is the detail drawn inside the picture, separate from this size.
 
-`Anisotropy` and `Mipmaps` apply to the GL picture. A glyph or menu drawn at about one texel per pixel stays a single sample. The game picture stays the console's 4:3 frame, fitted the same way in either mode. `Frame` `16:9` draws `border/left-border.jpg` and `border/right-border.jpg` in the columns a wide window leaves beside that picture. A window already near 4:3 has no column, so nothing is drawn. `HideBorders` leaves the columns black. `Frame` `4:3` does not draw them.
+`Anisotropy` and `Mipmaps` apply to the GL picture. A glyph or menu drawn at about one texel per pixel stays a single sample. The game picture stays the console's 4:3 frame. `Frame` `16:9` makes the area under the bar 16:9, with the picture in the middle, and draws `border/left-border.jpg` and `border/right-border.jpg` in the spare columns. `HideBorders` leaves those columns black. `Frame` `4:3` makes the area the picture's own size, so there is no column to draw.
