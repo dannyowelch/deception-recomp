@@ -19,8 +19,6 @@ A PC port of Tecmo's Deception: Invitation to Darkness (`SLUS-00340`), built wit
 ## Planned
 
 - 60 fps
-- Widescreen
-- Anti-aliasing
 
 ## Status
 
