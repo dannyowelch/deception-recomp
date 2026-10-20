@@ -157,7 +157,7 @@ public static class HostWindow
             {
                 var options = WindowOptions.Default with
                 {
-                    Size = new Vector2D<int>(1280, 720),
+                    Size = new Vector2D<int>(1280, 960),
                     Title = title,
                     // 0064. ApplySwapInterval owns the interval; Silk's puts 1 back over it.
                     VSync = false,
@@ -906,7 +906,7 @@ public static class HostWindow
 
     private static bool _borderlessActive;
     private static Vector2D<int> _windowedPosition = new(100, 100);
-    private static Vector2D<int> _windowedSize = new(1280, 720);
+    private static Vector2D<int> _windowedSize = new(1280, 960);
 
     private static unsafe void SetAutoIconify(bool on)
     {

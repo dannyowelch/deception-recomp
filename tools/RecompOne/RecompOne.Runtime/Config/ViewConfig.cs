@@ -121,7 +121,7 @@ public class ViewConfig
     {
         get
         {
-            var v = (int)GetFloat("RenderScale", 4f);
+            var v = (int)GetFloat("RenderScale", 8f);
             return v < 1 ? 1 : v > 8 ? 8 : v;
         }
         set => SetFloat("RenderScale", value < 1 ? 1 : value > 8 ? 8 : value);
