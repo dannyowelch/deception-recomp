@@ -22,6 +22,10 @@ public static class GpuHle
     public static bool PresentVerdictProbe;
     public static long PresentWide, PresentPlain, PresentFallback;
     public static double PresentWindowStart = Environment.TickCount64 / 1000.0;
+    // Last present, for a port that logs it. 2 wide, 1 a margin-less target,
+    // 0 no target, -1 the margin latch refused the target, 3 a 24-bit frame.
+    // MinValue until the first present. Written on the present thread.
+    public static int PresentKind = int.MinValue;
     // DisplayFlip counts genuine display-area flips (NotifyDisplay seeing a
     // different X,Y -- the per-frame flip, not the GP1(06)/(07)/(08)
     // re-notifications of the same rect). Per-target margin-content latches

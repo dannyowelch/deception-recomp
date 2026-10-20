@@ -2581,6 +2581,10 @@ public sealed partial class GlCore : IGpuBackend
         bool latchRefused = src != null && MarginRefused(src);
         if (latchRefused)
             src = null;
+        GpuHle.PresentKind = rgb24 ? 3
+            : src is { Margin: > 0 } ? 2
+            : src != null ? 1
+            : latchRefused ? -1 : 0;
         // KF2_PRESENT_PROBE=2: the census cannot say *why* a present dropped to the
         // 4:3 fallback -- no target covered the display area, the margin latch
         // refused the one that did, or the target has no margin at all. Print the
