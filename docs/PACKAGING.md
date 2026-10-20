@@ -78,6 +78,7 @@ Beside the executable, `content/`:
   config's `funcMap` paths are relative to the config file. Addresses and names;
   no disc bytes. Not `kf2.json`, not the King's Field funcmaps, not
   `config/generated`.
+- `content/border/` — `left-border.jpg` and `right-border.jpg`, drawn beside a 16:9 frame.
 - `content/src/` — `Program.cs`, `InputSupport.cs`, `GraphicsOptions.cs`, `LegacyData.cs` and Verdite
   Core's C# (`tools/verdite-core/src/**`, under `content/src/verdite-core/`), as
   source text. `patches/` and `mods/` are not in the payload. `Sources.All()`

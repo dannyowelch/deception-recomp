@@ -12,6 +12,7 @@ A PC port of Tecmo's Deception: Invitation to Darkness (`SLUS-00340`), built wit
 - Fully remappable controls
 - Adjustable render scale
 - Anisotropic filtering and mipmaps
+- Optional side art on a 16:9 frame
 - Fullscreen and borderless
 
 ## Planned

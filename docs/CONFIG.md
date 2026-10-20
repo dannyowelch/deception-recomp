@@ -100,6 +100,8 @@ The `[RecompOne]` section is the display. A missing key uses the fallback.
 | `RenderScale` | `4`, clamped to 1..8 |
 | `Anisotropy` | `16`. One of `1`, `2`, `4`, `8`, `16`. `1` is the console's single texel |
 | `Mipmaps` | `True` |
+| `Frame` | `16:9`. `4:3` leaves the side columns black |
+| `HideBorders` | `False`. With `Frame` at `16:9`, the side columns stay black |
 | `GpuBackend` | `auto`. Also `gl45`, `gl33`, `gl21`. Applied on the next launch |
 | `VSync` | `false` |
 | `Fullscreen`, `Borderless` | `false`. Fullscreen covers the screen. Borderless chooses a borderless window for that |
@@ -109,4 +111,4 @@ The `[RecompOne]` section is the display. A missing key uses the fallback.
 
 The window opens at 1280x720.
 
-`Anisotropy` and `Mipmaps` apply to the GL picture. A glyph or menu drawn at about one texel per pixel stays a single sample. The picture stays the console's 4:3 frame.
+`Anisotropy` and `Mipmaps` apply to the GL picture. A glyph or menu drawn at about one texel per pixel stays a single sample. The game picture stays the console's 4:3 frame, fitted the same way in either mode. `Frame` `16:9` draws `border/left-border.jpg` and `border/right-border.jpg` in the columns a wide window leaves beside that picture. A window already near 4:3 has no column, so nothing is drawn. `HideBorders` leaves the columns black. `Frame` `4:3` does not draw them.

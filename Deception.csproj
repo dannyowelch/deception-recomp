@@ -125,4 +125,8 @@
         <None Remove="packaging/**" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Update="border\*.jpg" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
 </Project>
