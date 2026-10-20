@@ -152,6 +152,7 @@ public static class MainMenuBar
     {
         ConfigManager.View.HideTopBar = !show;
         ConfigManager.SaveView(PanelManager.Panels);
+        HostWindow.AdjustForMenuBar();
     }
 
     private static void AutoHideMenuBar(bool autoHide)

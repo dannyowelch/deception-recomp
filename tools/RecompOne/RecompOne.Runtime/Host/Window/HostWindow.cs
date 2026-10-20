@@ -385,10 +385,12 @@ public static class HostWindow
             }
 
             InputManager.Poll();
+            ApplyWindowLayout();
             if (InputManager.ConsumeTopBarToggle())
             {
                 ConfigManager.View.HideTopBar = !ConfigManager.View.HideTopBar;
                 ConfigManager.SaveView(PanelManager.Panels);
+                AdjustForMenuBar();
             }
 
             if (InputManager.ConsumeFullscreenToggle())
@@ -531,11 +533,13 @@ public static class HostWindow
         }
         
         InputManager.Poll();
+        ApplyWindowLayout();
         
         if (InputManager.ConsumeTopBarToggle())
         {
             ConfigManager.View.HideTopBar = !ConfigManager.View.HideTopBar;
             ConfigManager.SaveView(PanelManager.Panels);
+            AdjustForMenuBar();
         }
         
         if (InputManager.ConsumeFullscreenToggle())
@@ -567,6 +571,7 @@ public static class HostWindow
         if (_headless || _window == null) return;
         if (OnWindowThread)
         {
+            ApplyWindowLayout();
             try
             {
                 _window.DoEvents();
@@ -606,6 +611,7 @@ public static class HostWindow
 
         if (OnWindowThread)
         {
+            ApplyWindowLayout();
             try { _window.DoEvents(); } catch { }
             if (_window.IsClosing) { Runtime.Shutdown(); Environment.Exit(0); }
             InputManager.Poll();
@@ -691,6 +697,180 @@ public static class HostWindow
 
         if (on) SetAutoIconify(false);
         ApplySwapInterval();
+        if (!on) ApplyWindowLayout();
+    }
+
+    /// <summary>
+    /// The area under the menu bar, in window pixels. The bar is not part of it:
+    /// a visible bar makes the window that much taller, and hiding the bar gives
+    /// the height back. Fullscreen keeps the request until the window returns.
+    /// </summary>
+    public static void SetContentSize(int width, int height)
+    {
+        if (width < 1 || height < 1) return;
+        _pendingContentW = width;
+        _pendingContentH = height;
+        _contentPending = true;
+        _menuAdjust = false;
+        if (OnWindowThread) ApplyWindowLayout();
+    }
+
+    /// <summary>The menu bar was just shown or hidden. The picture keeps its size.</summary>
+    public static void AdjustForMenuBar()
+    {
+        _menuAdjust = true;
+        if (OnWindowThread) ApplyWindowLayout();
+    }
+
+    static int _pendingContentW, _pendingContentH;
+    static bool _contentPending, _menuAdjust;
+    static int _menuBarPx, _appliedBar;
+
+    static void ApplyWindowLayout()
+    {
+        if (_window == null || !OnWindowThread) return;
+        if (!_contentPending && !_menuAdjust) return;
+        // Fullscreen keeps a size request until the window comes back. A menu-bar
+        // toggle there only covers the picture, so it is not saved as a resize.
+        if (_borderlessActive || _window.WindowState != WindowState.Normal)
+        {
+            _menuAdjust = false;
+            return;
+        }
+
+        int contentW, contentH;
+        bool snapped = _contentPending;
+        if (_contentPending)
+        {
+            contentW = _pendingContentW;
+            contentH = _pendingContentH;
+        }
+        else
+        {
+            contentW = _window.Size.X;
+            contentH = Math.Max(1, _window.Size.Y - _appliedBar);
+        }
+
+        _contentPending = false;
+        _menuAdjust = false;
+
+        int bar = ConfigManager.View.HideTopBar ? 0 : MenuBarHeight();
+        var client = FitContent(contentW, contentH, bar);
+        _appliedBar = bar;
+        PlaceInWorkArea(client);
+        _windowedSize = _window.Size;
+        if (snapped)
+            Console.WriteLine($"[Host] window {client.X}x{client.Y} for a {client.X}x{client.Y - bar} picture");
+        else
+            Console.WriteLine($"[Host] window {client.X}x{client.Y}, menu bar {(bar > 0 ? "shown" : "hidden")}");
+    }
+
+    static int MenuBarHeight()
+    {
+        if (_menuBarPx > 0) return _menuBarPx;
+        try
+        {
+            float h = ImGui.GetFrameHeight();
+            float ui = ImGui.GetIO().FontGlobalScale;
+            if (ui > 1.01f)
+            {
+                float padding = ImGui.GetStyle().FramePadding.Y * 2f;
+                h = MathF.Max(0f, h - padding) * ui + padding;
+            }
+
+            if (h >= 1f) return (int)MathF.Round(h);
+        }
+        catch
+        {
+            // The first request can land before ImGui has a context.
+        }
+
+        return (int)MathF.Round(24f * MathF.Max(1f, _dpiScale));
+    }
+
+    /// <summary>What the main menu bar actually occupied, so the next resize uses that
+    /// instead of the estimate from before the first frame.</summary>
+    static void NoteMenuBarMeasured()
+    {
+        if (ConfigManager.View.HideTopBar || _window == null || !OnWindowThread) return;
+        var viewport = ImGui.GetMainViewport();
+        int measured = (int)MathF.Round(viewport.Size.Y - viewport.WorkSize.Y);
+        if (measured <= 0) return;
+        _menuBarPx = measured;
+        if (_appliedBar <= 0 || measured == _appliedBar) return;
+        if (_borderlessActive || _window.WindowState != WindowState.Normal) return;
+
+        var size = _window.Size;
+        int height = size.Y + (measured - _appliedBar);
+        _appliedBar = measured;
+        _window.Size = new Vector2D<int>(size.X, Math.Max(height, measured + 1));
+        _windowedSize = _window.Size;
+    }
+
+    static Vector2D<int> FitContent(int contentW, int contentH, int bar)
+    {
+        int cw = Math.Max(1, contentW);
+        int ch = Math.Max(1, contentH);
+        if (MaxClient(out int maxW, out int maxH))
+        {
+            int roomH = Math.Max(1, maxH - bar);
+            if (cw > maxW || ch > roomH)
+            {
+                float scale = MathF.Min(maxW / (float)cw, roomH / (float)ch);
+                cw = Math.Max(1, (int)MathF.Floor(cw * scale));
+                ch = Math.Max(1, (int)MathF.Floor(ch * scale));
+            }
+        }
+
+        return new Vector2D<int>(cw, ch + bar);
+    }
+
+    static bool MaxClient(out int width, out int height)
+    {
+        width = height = 0;
+        if (_window?.Monitor?.Bounds is not { } work) return false;
+        WindowFrame(out int left, out int top, out int right, out int bottom);
+        width = Math.Max(1, work.Size.X - left - right);
+        height = Math.Max(1, work.Size.Y - top - bottom);
+        return true;
+    }
+
+    static void PlaceInWorkArea(Vector2D<int> client)
+    {
+        _window!.Size = client;
+        if (_window.Monitor?.Bounds is not { } work) return;
+        WindowFrame(out int left, out int top, out int right, out int bottom);
+        var pos = _window.Position;
+        int x = pos.X;
+        int y = pos.Y;
+        int workLeft = work.Origin.X;
+        int workTop = work.Origin.Y;
+        int workRight = workLeft + work.Size.X;
+        int workBottom = workTop + work.Size.Y;
+        if (x - left < workLeft) x = workLeft + left;
+        if (y - top < workTop) y = workTop + top;
+        if (x + client.X + right > workRight) x = workRight - right - client.X;
+        if (y + client.Y + bottom > workBottom) y = workBottom - bottom - client.Y;
+        if (x - left < workLeft) x = workLeft + left;
+        if (y - top < workTop) y = workTop + top;
+        if (x != pos.X || y != pos.Y)
+            _window.Position = new Vector2D<int>(x, y);
+    }
+
+    private static unsafe void WindowFrame(out int left, out int top, out int right, out int bottom)
+    {
+        left = top = right = bottom = 0;
+        try
+        {
+            var handle = _window?.Native?.Glfw;
+            if (handle is not { } h) return;
+            Silk.NET.GLFW.Glfw.GetApi().GetWindowFrameSize(
+                (Silk.NET.GLFW.WindowHandle*)h, out left, out top, out right, out bottom);
+        }
+        catch
+        {
+            left = top = right = bottom = 0;
+        }
     }
 
     /// <summary>The whole of the monitor the window is on. Silk's <c>IMonitor.Bounds</c>
@@ -1249,6 +1429,7 @@ public static class HostWindow
         var panels = Profiler.Begin(Profiler.Panels);
         if (!ConfigManager.View.HideTopBar)
             MainMenuBar.Draw();
+        NoteMenuBarMeasured();
 
         DrawDockspace();
         PanelManager.DrawPanels();
