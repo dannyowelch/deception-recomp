@@ -98,6 +98,9 @@ The `[RecompOne]` section is the display. A missing key uses the fallback.
 | Key | Fallback |
 |---|---|
 | `RenderScale` | `4`, clamped to 1..8 |
+| `Anisotropy` | `16`. One of `1`, `2`, `4`, `8`, `16`. `1` is the console's single texel |
+| `Mipmaps` | `True` |
+| `WideAspect` | `4:3`. `16:9` asks for the wider picture |
 | `GpuBackend` | `auto`. Also `gl45`, `gl33`, `gl21`. Applied on the next launch |
 | `VSync` | `false` |
 | `Fullscreen`, `Borderless` | `false`. Fullscreen covers the screen. Borderless chooses a borderless window for that |
@@ -106,3 +109,5 @@ The `[RecompOne]` section is the display. A missing key uses the fallback.
 | `Language`, `Accent`, `Background` | empty |
 
 The window opens at 1280x720.
+
+`Anisotropy` and `Mipmaps` apply to the GL picture. A glyph or menu drawn at about one texel per pixel stays a single sample. `4:3` leaves the console framing. `16:9` adds columns at the sides. A title card or fade covers the original width only, so those columns can show the scene behind it. One console line a second names which picture was presented, and how many primitives fell outside the game's own clip. The game's culling is unchanged.

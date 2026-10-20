@@ -52,6 +52,9 @@
         <Content Include="$(VerditeGameRoot)InputSupport.cs"
                  Link="content/src/InputSupport.cs"
                  CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="$(VerditeGameRoot)GraphicsOptions.cs"
+                 Link="content/src/GraphicsOptions.cs"
+                 CopyToOutputDirectory="PreserveNewest" />
         <Content Include="$(VerditeGameRoot)LegacyData.cs"
                  Link="content/src/LegacyData.cs"
                  CopyToOutputDirectory="PreserveNewest" />

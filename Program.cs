@@ -4,6 +4,7 @@ using Recompiled;
 // Entry point for the Tecmo's Deception (SLUS-00340) port.
 // Before the runtime reads settings.json or the memory cards.
 Deception.LegacyData.Migrate();
+Deception.GraphicsOptions.Install();
 var memory = new PSMemory();
 try
 {
