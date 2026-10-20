@@ -29,9 +29,9 @@ public static class GraphicsOptions
     static readonly string[] FrameLabels = ["4:3", "16:9"];
     static readonly string[] ScaleLabels = new string[8];
 
-    static bool _wide = true;
+    static bool _wide;
     static bool _hide;
-    static int _scale = 3;
+    static int _scale = 4;
     static bool _tried;
     static uint _left, _right;
 
@@ -47,9 +47,9 @@ public static class GraphicsOptions
         int stored = ConfigManager.View.GetInt(AnisoKey, 16);
         GteDepth.Anisotropy = Snap(stored);
         GteDepth.Mipmaps = ConfigManager.View.GetBool(MipKey, true);
-        _wide = ConfigManager.View.GetString(FrameKey, "16:9") == "16:9";
+        _wide = ConfigManager.View.GetString(FrameKey, "4:3") == "16:9";
         _hide = ConfigManager.View.GetBool(HideBordersKey, false);
-        _scale = Math.Clamp(ConfigManager.View.GetInt(ScaleKey, 3), 1, 8);
+        _scale = Math.Clamp(ConfigManager.View.GetInt(ScaleKey, 4), 1, 8);
         Push();
         FitWindow();
         var (w, h) = ContentSize();

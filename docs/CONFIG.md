@@ -97,19 +97,19 @@ The `[RecompOne]` section is the display. A missing key uses the fallback.
 
 | Key | Fallback |
 |---|---|
-| `RenderScale` | `4`, clamped to 1..8 |
+| `RenderScale` | `8`, clamped to 1..8 |
 | `Anisotropy` | `16`. One of `1`, `2`, `4`, `8`, `16`. `1` is the console's single texel |
 | `Mipmaps` | `True` |
-| `WindowScale` | `3`, clamped to 1..8. The picture is 320×240 times this. The menu bar is not part of that area |
-| `Frame` | `16:9`. `4:3` fits the window to the picture and leaves no side columns |
+| `WindowScale` | `4`, clamped to 1..8. The picture is 320×240 times this. The menu bar is not part of that area |
+| `Frame` | `4:3`. The window fits the picture. `16:9` widens the area under the menu bar and can draw the side art |
 | `HideBorders` | `False`. With `Frame` at `16:9`, the side columns stay black |
 | `GpuBackend` | `auto`. Also `gl45`, `gl33`, `gl21`. Applied on the next launch |
 | `VSync` | `false` |
 | `Fullscreen`, `Borderless` | `false`. Fullscreen covers the screen. Borderless chooses a borderless window for that |
 | `UiScale` | `1`, clamped to 0.5..3 |
-| `ShowFps`, `HideTopBar`, `AutoHideMenuBar` | `false` |
+| `ShowFps`, `HideTopBar`, `AutoHideMenuBar` | `false`. The menu bar starts shown |
 | `Language`, `Accent`, `Background` | empty |
 
-The window opens so the area under the menu bar matches `Frame` at `WindowScale`. `3` and `16:9` is 1280×720 under the bar. Showing or hiding the menu bar (F1) changes the window height by the bar and leaves that area alone. Render scale is the detail drawn inside the picture, separate from this size.
+The window opens windowed, with the menu bar shown, so the area under the bar matches `Frame` at `WindowScale`. The default, `4:3` at `4`, is 1280×960 under the bar. Showing or hiding the menu bar (F1) changes the window height by the bar and leaves that area alone. Render scale is the detail drawn inside the picture, separate from this size.
 
 `Anisotropy` and `Mipmaps` apply to the GL picture. A glyph or menu drawn at about one texel per pixel stays a single sample. The game picture stays the console's 4:3 frame. `Frame` `16:9` makes the area under the bar 16:9, with the picture in the middle, and draws `border/left-border.jpg` and `border/right-border.jpg` in the spare columns. `HideBorders` leaves those columns black. `Frame` `4:3` makes the area the picture's own size, so there is no column to draw.
