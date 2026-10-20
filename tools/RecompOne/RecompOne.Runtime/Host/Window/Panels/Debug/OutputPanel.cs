@@ -59,6 +59,30 @@ public static class OutputView
     public static int GameW { get; internal set; }
     public static int GameH { get; internal set; }
 
+    /// <summary>Runs on the draw thread before the picture is placed. A port loads
+    /// side art here, when the GL context is current.</summary>
+    public static Action? Prepare { get; set; }
+
+    /// <summary>
+    /// <paramref name="frameAspect"/> wider than the game (16/9 over a 4/3 picture)
+    /// paints <paramref name="left"/> and <paramref name="right"/> in the columns a
+    /// wide window leaves beside the picture. The picture keeps its own fit.
+    /// Zero, or <paramref name="show"/> false, leaves those columns black. A window
+    /// already near the game's aspect has no column to paint.
+    /// </summary>
+    public static void SetSideBorders(float frameAspect, bool show, uint left, uint right)
+    {
+        FrameAspect = frameAspect;
+        ShowBorders = show && left != 0 && right != 0;
+        BorderLeft = left;
+        BorderRight = right;
+    }
+
+    internal static float FrameAspect { get; private set; }
+    internal static bool ShowBorders { get; private set; }
+    internal static uint BorderLeft { get; private set; }
+    internal static uint BorderRight { get; private set; }
+
     /// <summary>
     /// The dock node the Output panel sits in, or 0 while it floats. A node that
     /// holds a window is a leaf, so a port can split it to dock a panel of its own
@@ -89,7 +113,6 @@ internal sealed class OutputPanel : IPanel
         (_texId, _texW, _texH, _aspect) = (id, w, h, aspect > 0f ? aspect : 4f / 3f);
     }
 
-    //idea: in the future make this be able to draw images so you can have ornamented backgrounds
     public void Draw()
     {
         ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
@@ -126,11 +149,29 @@ internal sealed class OutputPanel : IPanel
             return;
         }
 
+        OutputView.Prepare?.Invoke();
+
         if (_texId != 0 && _texW > 0 && _texH > 0)
         {
             var avail = ImGui.GetContentRegionAvail();
+            var origin = ImGui.GetCursorScreenPos();
             var imageSize = FitAspect(new Vector2(_aspect, 1f), avail);
             var offset = (avail - imageSize) * 0.5f;
+            float frameAspect = OutputView.FrameAspect;
+            // Halfway from the game aspect to the frame aspect. A 4:3 window, or a
+            // 4:3 window shortened by the menu bar, stays under that and keeps black.
+            bool wideWindow = frameAspect > _aspect + 0.02f && avail.Y > 1f
+                && avail.X / avail.Y >= (_aspect + frameAspect) * 0.5f;
+            if (OutputView.ShowBorders && wideWindow && offset.X > 1f)
+            {
+                var dl = ImGui.GetWindowDrawList();
+                var barSize = new Vector2(offset.X, imageSize.Y);
+                var leftMin = origin + new Vector2(0f, offset.Y);
+                dl.AddImage((nint)OutputView.BorderLeft, leftMin, leftMin + barSize);
+                var rightMin = origin + new Vector2(offset.X + imageSize.X, offset.Y);
+                dl.AddImage((nint)OutputView.BorderRight, rightMin, rightMin + barSize);
+            }
+
             ImGui.SetCursorPos(ImGui.GetCursorPos() + offset);
 
             //Published from here rather than computed from the window: this is the

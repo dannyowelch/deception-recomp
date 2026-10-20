@@ -1,5 +1,6 @@
 using System.Numerics;
 using ImGuiNET;
+using StbImageSharp;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
@@ -1367,24 +1368,55 @@ public static class HostWindow
         }
     }
 
-    public static uint UploadTexture(byte[] rgba, int width, int height)
+    public static uint UploadTexture(byte[] rgba, int width, int height, bool smooth = false)
     {
         if (_gl == null || width <= 0 || height <= 0) return 0;
         var needed = width * height * 4;
         if (rgba.Length < needed) return 0;
-        var tex = CreateTexture(_gl);
+        var tex = CreateTexture(_gl, smooth);
         _gl.BindTexture(TextureTarget.Texture2D, tex);
         _gl.TexImage2D<byte>(TextureTarget.Texture2D, 0, InternalFormat.Rgba,
             (uint)width, (uint)height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, rgba.AsSpan(0, needed));
         return tex;
     }
 
-    private static uint CreateTexture(GL gl)
+    /// <summary>A JPEG or PNG, kept at its own size. Smooth art gets a mip chain.</summary>
+    public static uint UploadImage(byte[] encoded, bool smooth)
+    {
+        try
+        {
+            var img = ImageResult.FromMemory(encoded, ColorComponents.RedGreenBlueAlpha);
+            if (img == null || img.Width <= 0 || img.Height <= 0) return 0;
+            var tex = UploadTexture(img.Data, img.Width, img.Height, smooth);
+            if (smooth && tex != 0 && _gl != null)
+            {
+                try
+                {
+                    _gl.BindTexture(TextureTarget.Texture2D, tex);
+                    _gl.GenerateMipmap(TextureTarget.Texture2D);
+                    _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.LinearMipmapLinear);
+                }
+                catch (Exception mip)
+                {
+                    Console.WriteLine($"[host] image mipmaps: {mip.Message}");
+                }
+            }
+            return tex;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"[host] image: {e.Message}");
+            return 0;
+        }
+    }
+
+    private static uint CreateTexture(GL gl, bool smooth = false)
     {
         var tex = gl.GenTexture();
         gl.BindTexture(TextureTarget.Texture2D, tex);
-        gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
-        gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
+        var filter = (int)(smooth ? GLEnum.Linear : GLEnum.Nearest);
+        gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, filter);
+        gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, filter);
         gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
         gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
         return tex;
