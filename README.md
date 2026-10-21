@@ -9,6 +9,7 @@ A PC port of Tecmo's Deception: Invitation to Darkness (`SLUS-00340`), built wit
 - Keyboard and mouse look
 - Separate walk and menu controls
 - Fully remappable controls
+- Memory card backup and restore
 - Adjustable render scale
 - Windowed, fullscreen, and borderless options
 - Anisotropic filtering and mipmaps
@@ -33,7 +34,7 @@ dotnet build Deception.csproj -c Release
 dotnet run --project Deception.csproj -c Release
 ```
 
-To play, set `CdPath` in `settings.json`, or choose the file when the game asks. Settings are described in [docs/CONFIG.md](docs/CONFIG.md).
+To play, set `CdPath` in `settings.json`, or choose the file when the game asks. Settings are described in [docs/CONFIG.md](docs/CONFIG.md). A new version keeps your memory cards and settings. System > Memory Cards can back them up.
 
 ## Credits
 

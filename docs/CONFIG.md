@@ -116,3 +116,13 @@ The `[RecompOne]` section is the display. A missing key uses the fallback.
 The window opens windowed, with the menu bar shown, so the area under the bar matches `Frame` at `WindowScale`. The default, `4:3` at `4`, is 1280×960 under the bar. Showing or hiding the menu bar (F1) changes the window height by the bar and leaves that area alone. Render scale is the detail drawn inside the picture, separate from this size.
 
 `Anisotropy` and `Mipmaps` apply to the GL picture. A glyph or menu drawn at about one texel per pixel stays a single sample. The game picture stays the console's 4:3 frame. `Frame` `16:9` makes the area under the bar 16:9, with the picture in the middle, and draws `border/left-border.jpg` and `border/right-border.jpg` in the spare columns. `HideBorders` leaves those columns black. `Frame` `4:3` makes the area the picture's own size, so there is no column to draw.
+
+## Updates and backups
+
+A new release does not replace `carda.sav`, `cardb.sav`, `settings.json`, or `interface.ini`. The packaged game keeps them in `%LOCALAPPDATA%\Deception` on Windows and in `$XDG_DATA_HOME/deception`, or `~/.local/share/deception`, on Linux. `DECEPTION_DATA` overrides that folder and is not filled from the one above.
+
+On startup, a setting this version adds is written into the existing file. A value already there stays, including a name this version does not use. Display keys are added the same way in `interface.ini`, and the window layout in that file is left as it is.
+
+The first launch of this port copies those files from an older folder (`%LOCALAPPDATA%\Verdite2`, or the King's Field folders, and the same names under `~/.local/share`) only when the Deception folder does not already have them. A file that is already there is not replaced.
+
+System > Memory Cards > Backup copies both cards into `backups/<date-time>/` in that folder. Restore puts `carda.sav` and `cardb.sav` from a chosen folder back onto the cards now in use. The cards being replaced are kept beside them, with `pre-restore` in the name. If the memory card screen still shows the old saves, use System > Hard Reset.

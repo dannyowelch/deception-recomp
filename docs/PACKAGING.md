@@ -131,6 +131,15 @@ and only notifies. It does not download a release.
    `%LOCALAPPDATA%\Deception`, or `$XDG_DATA_HOME/deception` else
    `~/.local/share/deception`. `DECEPTION_DATA` overrides it.
 
+   A later release does not replace `settings.json`, `interface.ini`, `carda.sav`,
+   or `cardb.sav`. On startup, settings this version adds are written into the
+   existing files; a value already there stays. When the Deception folder is
+   missing one of those files, it is copied from `%LOCALAPPDATA%\Verdite2` (and
+   the older King's Field folder names, or `~/.local/share/verdite2`) and not
+   replaced if it is already there. `DECEPTION_DATA` skips that copy. The package
+   build fails if a player file is staged into the zip or the AppImage, so
+   unpacking a release cannot overwrite one.
+
 2. `Runtime.DiscValidator = DiscCheck.Validate`. It checks `SYSTEM.CNF` boots
    `SLUS_003.40` and that every file `Deception.json` slices is present and at
    least as long as its furthest slice. King's Field `SLUS-00158` and

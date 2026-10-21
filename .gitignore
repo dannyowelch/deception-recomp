@@ -20,6 +20,9 @@ tools/RecompOne/RecompOne.Recompiler/AutoConfigure/signatures/psyq.json
 *.sav.bak
 # 0106: a damaged card, settings.json or interface.ini kept aside, and a write in flight.
 *.damaged-*
+*.pre-restore-*
+# System > Memory Cards > Backup, when the game is run from this tree.
+/backups/
 /*.tmp
 settings.json
 # Verdite Core's WindowIcon keeps the disc's card icon here for the next run.
