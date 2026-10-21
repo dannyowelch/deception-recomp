@@ -125,4 +125,4 @@ On startup, a setting this version adds is written into the existing file. A val
 
 The first launch of this port copies those files from an older folder (`%LOCALAPPDATA%\Verdite2`, or the King's Field folders, and the same names under `~/.local/share`) only when the Deception folder does not already have them. A file that is already there is not replaced.
 
-System > Memory Cards > Backup copies both cards into `backups/<date-time>/` in that folder. Restore puts `carda.sav` and `cardb.sav` from a chosen folder back onto the cards now in use. The cards being replaced are kept beside them, with `pre-restore` in the name. If the memory card screen still shows the old saves, use System > Hard Reset.
+System > Memory Cards > Backup copies both cards into `backups/<date-time>/` in that folder. Restore opens in that `backups` folder and puts `carda.sav` and `cardb.sav` from the chosen folder back onto the cards now in use. The cards being replaced are kept beside them, with `pre-restore` in the name. If the memory card screen still shows the old saves, use System > Hard Reset.
