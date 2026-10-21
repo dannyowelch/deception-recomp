@@ -306,10 +306,6 @@ public static class OverlayWriter
         var overlayNames = overlayResults.Select(o => o.Name).ToList();
         EntryWriter.Write(mainExe, sysCfg, sysCfg.BootExe, className, mainCall, overlayNames, outDir);
 
-        // generated/ is not committed. A regen has to keep the sharp wall and door art.
-        if (className == "Deception")
-            DeceptionLodRewrite.ApplyFile(Path.Combine(outDir, "bin_3dmd.cs"));
-
         Console.WriteLine("[Recompiler] finished "); //maybe add time it took
     }
 

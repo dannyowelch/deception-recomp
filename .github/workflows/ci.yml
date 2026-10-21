@@ -94,7 +94,6 @@ jobs:
           test -f content/src/Program.cs || fail "missing Program.cs"
           test -f content/src/InputSupport.cs || fail "missing InputSupport.cs"
           test -f content/src/LegacyData.cs || fail "missing LegacyData.cs"
-          test -f content/src/WallLod.cs || fail "missing WallLod.cs"
           test -n "$(find content/src/verdite-core -name '*.cs' -print -quit)" || fail "missing verdite-core src"
           if find content -type f -iname 'kf2.json' -o -iname 'onboarding.json' -o -iname 'verdite.json' | grep -q .; then
             fail "King's Field config is in content/"

@@ -59,9 +59,6 @@
         <Content Include="$(VerditeGameRoot)LegacyData.cs"
                  Link="content/src/LegacyData.cs"
                  CopyToOutputDirectory="PreserveNewest" />
-        <Content Include="$(VerditeGameRoot)WallLod.cs"
-                 Link="content/src/WallLod.cs"
-                 CopyToOutputDirectory="PreserveNewest" />
         <Content Include="$(VerditeGameRoot)border\*.jpg"
                  LinkBase="content/border"
                  CopyToOutputDirectory="PreserveNewest" />
