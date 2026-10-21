@@ -1,24 +1,19 @@
-# Deception
+# Deception-recomp
 
 A PC port of Tecmo's Deception: Invitation to Darkness (`SLUS-00340`), built with [RecompOne](https://github.com/BlackLabelHQ/RecompOne).
 
 ## Features
 
 - Native Windows and Linux
-- Original 30 fps pacing
 - Full analog gamepad support
 - Keyboard and mouse look
 - Separate walk and menu controls
 - Fully remappable controls
 - Adjustable render scale
-- Window size from 1× to 8× the original picture
+- Windowed, fullscreen, and borderless options
 - Anisotropic filtering and mipmaps
 - Optional side art on a 16:9 frame
-- Fullscreen and borderless
-
-## Planned
-
-- 60 fps
+- Fixed LOD textures for walls and doors
 
 ## Status
 
@@ -26,7 +21,7 @@ Playable. A full playthrough is not yet verified.
 
 ## Requirements
 
-Your own dump of the North American disc (`SLUS-00340`), as cue/bin or CHD v5, and the [.NET 10 SDK](https://dotnet.microsoft.com/download). No game data, BIOS, or assets are included.
+Your own dump of the North American disc (`SLUS-00340`), as cue/bin or CHD v5, and the [.NET 10 SDK](https://dotnet.microsoft.com/download) - only needed to build. No game data, BIOS, or assets are included.
 
 ## Building and running
 
