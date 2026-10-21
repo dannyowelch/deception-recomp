@@ -87,6 +87,9 @@ public static class Runtime
     public static Hardware.MemoryCard CardA = new("carda.sav") { Enabled = true };
     public static Hardware.MemoryCard CardB = new("cardb.sav") { Enabled = true };
 
+    /// <summary>Read the card files again. An existing file is loaded as it is.</summary>
+    public static void ReloadMemoryCards() => LoadMemoryCards();
+
     private static void LoadMemoryCards()
     {
         var g = Config.ConfigManager.Game;

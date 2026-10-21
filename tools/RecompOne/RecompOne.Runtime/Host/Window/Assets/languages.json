@@ -64,6 +64,134 @@
       "zh-CN": "退出程序",
       "fr-FR": "Quitter l'application"
     },
+    "menu.system.cards": {
+      "en": "Memory Cards",
+      "pt-BR": "Cartões de Memória",
+      "es-419": "Tarjetas de memoria",
+      "ja-JP": "メモリーカード",
+      "zh-CN": "记忆卡",
+      "fr-FR": "Cartes mémoire"
+    },
+    "menu.system.cards.tooltip": {
+      "en": "Copy both memory cards into a backups folder, or put a backup back.",
+      "pt-BR": "Copia os dois cartões para uma pasta de backup, ou devolve um backup.",
+      "es-419": "Copia las dos tarjetas a una carpeta de respaldo, o vuelve a poner una copia.",
+      "ja-JP": "両方のメモリーカードをバックアップフォルダへコピーするか、バックアップを戻します。",
+      "zh-CN": "把两张记忆卡复制到备份文件夹，或把备份放回去。",
+      "fr-FR": "Copie les deux cartes dans un dossier de sauvegarde, ou remet une copie en place."
+    },
+    "menu.system.backup_cards": {
+      "en": "Backup",
+      "pt-BR": "Backup",
+      "es-419": "Copia de seguridad",
+      "ja-JP": "バックアップ",
+      "zh-CN": "备份",
+      "fr-FR": "Sauvegarder"
+    },
+    "menu.system.restore_cards": {
+      "en": "Restore",
+      "pt-BR": "Restaurar",
+      "es-419": "Restaurar",
+      "ja-JP": "復元",
+      "zh-CN": "还原",
+      "fr-FR": "Restaurer"
+    },
+    "cards.backup.done": {
+      "en": "Backed up {0} to {1}.",
+      "pt-BR": "Backup de {0} em {1}.",
+      "es-419": "Respaldo de {0} en {1}.",
+      "ja-JP": "{0} を {1} にバックアップしました。",
+      "zh-CN": "已将 {0} 备份到 {1}。",
+      "fr-FR": "{0} copié vers {1}."
+    },
+    "cards.backup.none": {
+      "en": "There are no memory card files to back up yet.",
+      "pt-BR": "Ainda não há cartões de memória para copiar.",
+      "es-419": "Todavía no hay tarjetas de memoria para copiar.",
+      "ja-JP": "バックアップするメモリーカードがまだありません。",
+      "zh-CN": "还没有可以备份的记忆卡。",
+      "fr-FR": "Il n'y a pas encore de carte mémoire à copier."
+    },
+    "cards.backup.failed": {
+      "en": "Could not back up the memory cards: {0}",
+      "pt-BR": "Não foi possível fazer o backup dos cartões: {0}",
+      "es-419": "No se pudo respaldar las tarjetas: {0}",
+      "ja-JP": "メモリーカードをバックアップできませんでした: {0}",
+      "zh-CN": "无法备份记忆卡: {0}",
+      "fr-FR": "Impossible de sauvegarder les cartes : {0}"
+    },
+    "cards.restore.title": {
+      "en": "Restore Memory Cards",
+      "pt-BR": "Restaurar Cartões de Memória",
+      "es-419": "Restaurar tarjetas de memoria",
+      "ja-JP": "メモリーカードを復元",
+      "zh-CN": "还原记忆卡",
+      "fr-FR": "Restaurer les cartes mémoire"
+    },
+    "cards.restore.none": {
+      "en": "That folder has no memory card files.",
+      "pt-BR": "Essa pasta não tem cartões de memória.",
+      "es-419": "Esa carpeta no tiene tarjetas de memoria.",
+      "ja-JP": "そのフォルダにメモリーカードはありません。",
+      "zh-CN": "该文件夹里没有记忆卡。",
+      "fr-FR": "Ce dossier ne contient pas de carte mémoire."
+    },
+    "cards.restore.same": {
+      "en": "Those files are the memory cards already in use.",
+      "pt-BR": "Esses arquivos já são os cartões em uso.",
+      "es-419": "Esos archivos ya son las tarjetas en uso.",
+      "ja-JP": "そのファイルは、今使っているメモリーカードそのものです。",
+      "zh-CN": "这些文件就是正在使用的记忆卡。",
+      "fr-FR": "Ces fichiers sont déjà les cartes en cours d'utilisation."
+    },
+    "cards.restore.body": {
+      "en": "Replace the memory cards now in use with the copies in {0}? The current cards are kept beside them first.\n\n{1}",
+      "pt-BR": "Substituir os cartões em uso pelas cópias em {0}? Os cartões atuais são guardados ao lado deles antes.\n\n{1}",
+      "es-419": "¿Reemplazar las tarjetas en uso por las copias en {0}? Las actuales se guardan junto a ellas primero.\n\n{1}",
+      "ja-JP": "使用中のメモリーカードを {0} のコピーで置き換えますか? 今のカードは先に隣へ残します。\n\n{1}",
+      "zh-CN": "要用 {0} 中的副本替换正在使用的记忆卡吗? 当前的卡会先留在旁边。\n\n{1}",
+      "fr-FR": "Remplacer les cartes en cours par les copies dans {0} ? Les cartes actuelles sont conservées à côté d'abord.\n\n{1}"
+    },
+    "cards.restore.bad": {
+      "en": "{0} is not a memory card, so it was left alone.",
+      "pt-BR": "{0} não é um cartão de memória e foi deixado como está.",
+      "es-419": "{0} no es una tarjeta de memoria y se dejó como está.",
+      "ja-JP": "{0} はメモリーカードではないので、そのままにしました。",
+      "zh-CN": "{0} 不是记忆卡，因此未改动。",
+      "fr-FR": "{0} n'est pas une carte mémoire et n'a pas été modifié."
+    },
+    "cards.restore.done": {
+      "en": "Restored {0}. If the memory card screen still shows the old saves, use Hard Reset.",
+      "pt-BR": "Restaurado: {0}. Se a tela do cartão ainda mostrar os saves antigos, use Hard Reset.",
+      "es-419": "Restaurado: {0}. Si la pantalla de la tarjeta sigue mostrando los datos anteriores, usa Hard Reset.",
+      "ja-JP": "{0} を復元しました。メモリーカード画面に古いセーブが残るときは、ハードリセットを使ってください。",
+      "zh-CN": "已还原 {0}。如果记忆卡画面仍显示旧存档，请使用硬重置。",
+      "fr-FR": "Restauré : {0}. Si l'écran de la carte montre encore les anciennes sauvegardes, utilisez Hard Reset."
+    },
+    "cards.restore.failed": {
+      "en": "Could not restore the memory cards: {0}",
+      "pt-BR": "Não foi possível restaurar os cartões: {0}",
+      "es-419": "No se pudieron restaurar las tarjetas: {0}",
+      "ja-JP": "メモリーカードを復元できませんでした: {0}",
+      "zh-CN": "无法还原记忆卡: {0}",
+      "fr-FR": "Impossible de restaurer les cartes : {0}"
+    },
+    "cards.restore.confirm": {
+      "en": "Restore",
+      "pt-BR": "Restaurar",
+      "es-419": "Restaurar",
+      "ja-JP": "復元",
+      "zh-CN": "还原",
+      "fr-FR": "Restaurer"
+    },
+    "cards.restore.cancel": {
+      "en": "Cancel",
+      "pt-BR": "Cancelar",
+      "es-419": "Cancelar",
+      "ja-JP": "キャンセル",
+      "zh-CN": "取消",
+      "fr-FR": "Annuler"
+    },
     "menu.mods": {
       "en": "Mods",
       "pt-BR": "Mods",

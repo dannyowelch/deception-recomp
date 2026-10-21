@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using ImGuiNET;
 using RecompOne.Runtime.Host.Window;
@@ -67,8 +68,12 @@ public static class ConfigManager
         if (File.Exists(GameConfigPath))
             try
             {
-                Game = JsonSerializer.Deserialize<GameConfig>(File.ReadAllText(GameConfigPath), _opts) ??
-                       new GameConfig();
+                var text = File.ReadAllText(GameConfigPath);
+                if (JsonNode.Parse(text) is not JsonObject player)
+                    throw new JsonException("settings.json is not an object");
+
+                Game = JsonSerializer.Deserialize<GameConfig>(text, _opts) ?? new GameConfig();
+                AddMissingSettings(player);
             }
             catch (Exception e)
             {
@@ -83,9 +88,11 @@ public static class ConfigManager
         if (File.Exists(InterfaceFile))
             try
             {
-                var (view, imguiIni) = ParseInterfaceFile(File.ReadAllText(InterfaceFile));
+                var text = File.ReadAllText(InterfaceFile);
+                var (view, imguiIni) = ParseInterfaceFile(text);
                 View = view;
                 _pendingImGuiIni = imguiIni;
+                AddMissingDisplay(text);
             }
             catch (Exception e)
             {
@@ -93,6 +100,44 @@ public static class ConfigManager
                 Console.Error.WriteLine($"[Config] {InterfaceFile} unreadable, defaults used ({e.Message}); " +
                                         $"kept as {kept ?? "(none)"}");
             }
+    }
+
+    /// <summary>
+    /// Write any setting this version adds into the player's settings.json.
+    /// Values already in the file stay, including names this version does not
+    /// know. The file is not rewritten when nothing is missing.
+    /// </summary>
+    static void AddMissingSettings(JsonObject player)
+    {
+        if (JsonSerializer.SerializeToNode(new GameConfig(), _opts) is not JsonObject defaults) return;
+        if (!SettingsKeep.MissingAny(player, defaults)) return;
+        if (JsonSerializer.SerializeToNode(Game, _opts) is not JsonObject merged) return;
+
+        SettingsKeep.KeepUnknown(merged, player);
+        IO.DurableFile.TryWriteText(GameConfigPath, merged.ToJsonString(_opts), "the settings");
+        Console.WriteLine("[Config] settings.json gained the settings this version adds; existing values were kept");
+    }
+
+    /// <summary>
+    /// Insert display keys this version adds. Existing lines and the ImGui
+    /// layout are copied through unchanged.
+    /// </summary>
+    static void AddMissingDisplay(string text)
+    {
+        var missing = new List<KeyValuePair<string, string>>();
+        foreach (var (key, value) in InterfaceMerge.Defaults)
+        {
+            if (View.Has(key)) continue;
+            missing.Add(new KeyValuePair<string, string>(key, value));
+            View.SetString(key, value);
+        }
+
+        if (missing.Count == 0) return;
+
+        var updated = InterfaceMerge.InsertMissing(text, missing);
+        if (updated == text) return;
+        IO.DurableFile.TryWriteText(InterfaceFile, updated, "the interface settings");
+        Console.WriteLine("[Config] interface.ini gained the display settings this version adds; existing values were kept");
     }
 
 
@@ -141,7 +186,21 @@ public static class ConfigManager
 
     public static void SaveGame()
     {
-        IO.DurableFile.TryWriteText(GameConfigPath, JsonSerializer.Serialize(Game, _opts), "the settings");
+        var json = JsonSerializer.Serialize(Game, _opts);
+        if (JsonNode.Parse(json) is JsonObject node && File.Exists(GameConfigPath))
+        {
+            try
+            {
+                if (JsonNode.Parse(File.ReadAllText(GameConfigPath)) is JsonObject existing)
+                    SettingsKeep.KeepUnknown(node, existing);
+                json = node.ToJsonString(_opts);
+            }
+            catch (JsonException)
+            {
+            }
+        }
+
+        IO.DurableFile.TryWriteText(GameConfigPath, json, "the settings");
     }
 
     private static (ViewConfig view, string imguiIni) ParseInterfaceFile(string content)

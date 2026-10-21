@@ -1136,6 +1136,7 @@ public static class HostWindow
         PopupManager.Register(new ModsPopup());
         PopupManager.Register(new ModLoadingPopup());
         PopupManager.Register(new NoticePopup());
+        PopupManager.Register(new CardRestorePopup());
         PopupManager.Register(new StartupNoticePopup());
         PopupManager.Register(new DiscPickerPopup());
         PopupManager.Register(new CrashPopup());

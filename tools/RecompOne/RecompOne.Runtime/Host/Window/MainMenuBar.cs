@@ -14,6 +14,11 @@ public static class MainMenuBar
 
         MenuRegistry.Menu("menu.system")
             .Popup<SettingsPopup>("menu.system.settings")
+            .Submenu("menu.system.cards").Before("menu.system.view_separator")
+                .Tooltip("menu.system.cards.tooltip")
+                .Item("menu.system.backup_cards", CardFiles.Backup)
+                .Item("menu.system.restore_cards", CardFiles.ChooseRestore)
+            .End()
             .Separator("menu.system.view_separator")
             .Check("menu.system.show_menu_bar", () => !ConfigManager.View.HideTopBar, ShowMenuBar, "F1")
             .Check("menu.system.autohide_menu_bar", () => ConfigManager.View.AutoHideMenuBar, AutoHideMenuBar)
