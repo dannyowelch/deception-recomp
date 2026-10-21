@@ -87,6 +87,17 @@ done
 printf '%s\n' "$VERSION" > "$APPDIR/version.txt"
 printf '%s\n' "$VERSION" > "$APPDIR/usr/share/doc/$APP_ID/version.txt"
 
+# A release must not carry a player's cards or settings. Unpacking one over an
+# older folder would replace them.
+found=$(find "$APPDIR" -type f \( \
+    -name 'settings.json' -o -name 'interface.ini' -o \
+    -name '*.sav' -o -name '*.sav.bak' -o -name '*.fog' \) || true)
+if [ -n "$found" ]; then
+    echo "release would ship player files:" >&2
+    echo "$found" >&2
+    exit 1
+fi
+
 echo "==> appimagetool"
 TOOL="${APPIMAGETOOL:-}"
 if [ -z "$TOOL" ]; then

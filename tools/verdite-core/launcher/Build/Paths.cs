@@ -1,3 +1,5 @@
+using RecompOne.Runtime.Config;
+
 namespace Verdite.Launcher.Build;
 
 /// <summary>
@@ -64,6 +66,30 @@ static class Paths
         return dir;
     }
 
+    /// <summary>Earlier data folders, and the install folder, for files a player already has.</summary>
+    static IEnumerable<string> OlderDataRoots()
+    {
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (!string.IsNullOrWhiteSpace(local))
+        {
+            yield return Path.Combine(local, "Verdite2");
+            yield return Path.Combine(local, "KingsField2");
+            yield return Path.Combine(local, "KingsField2Recomp");
+        }
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var xdg = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+        foreach (var id in new[] { "verdite2", "kingsfield2", "kingsfield2recomp" })
+        {
+            if (!string.IsNullOrWhiteSpace(xdg) && Path.IsPathRooted(xdg))
+                yield return Path.Combine(xdg, id);
+            if (!string.IsNullOrWhiteSpace(home))
+                yield return Path.Combine(home, ".local", "share", id);
+        }
+
+        yield return Install;
+    }
+
     static string ResolveData()
     {
         var game = Launcher.Game;
@@ -108,6 +134,13 @@ static class Paths
     {
         Directory.CreateDirectory(Data);
         Directory.CreateDirectory(Builds);
+
+        // Before the runtime reads settings.json or the cards. A file already
+        // in the data directory is not replaced. DECEPTION_DATA is a separate
+        // folder on purpose, so it is not filled from the player's own one.
+        if (string.IsNullOrWhiteSpace(Launcher.Game.Env("DATA")))
+            PlayerFiles.BringForward(Data, OlderDataRoots());
+
         Directory.SetCurrentDirectory(Data);
 
         if (!Directory.Exists(ContentMods)) return;

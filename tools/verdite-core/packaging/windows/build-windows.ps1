@@ -108,6 +108,16 @@ Copy-Item (Join-Path $root 'tools\RecompOne\patches\assets\NotoSans-OFL.txt') `
 # with no version tag writes 0.0.0.
 Set-Content -Path (Join-Path $stage 'version.txt') -Value $version -Encoding ascii
 
+# A release must not carry a player's cards or settings. Unzipping one over an
+# older folder would replace them.
+$playerFiles = @(Get-ChildItem -Path $stage -Recurse -File | Where-Object {
+    $_.Name -eq 'settings.json' -or $_.Name -eq 'interface.ini' -or
+    $_.Name -like '*.sav' -or $_.Name -like '*.sav.bak' -or $_.Name -like '*.fog'
+})
+if ($playerFiles.Count -gt 0) {
+    throw "release would ship player files: $($playerFiles.FullName -join ', ')"
+}
+
 $zip = Join-Path $dist "$name-$version-win-x64.zip"
 Write-Host "==> $zip"
 if (Test-Path $zip) { Remove-Item -Force $zip }
