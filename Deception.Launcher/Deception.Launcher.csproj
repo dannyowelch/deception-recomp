@@ -20,11 +20,12 @@
         <VerditeEnvPrefix>DECEPTION_</VerditeEnvPrefix>
 
         <!--
-          No ApplicationIcon: the port has no mark of its own. Its icon is the
-          card icon off the player's disc, which no file shipped can carry; the
-          game points the shortcuts at it (docs/PACKAGING.md, "The icon comes off
-          the disc").
+          The file icon Explorer shows on DeceptionLauncher.exe. The Windows
+          package's stub reads the same file (packaging/shared/deception.ico).
+          The window wears packaging/shared/deception.png, which Launcher.targets
+          copies beside this executable. Both are made from Icon.jpg.
         -->
+        <ApplicationIcon>..\packaging\shared\deception.ico</ApplicationIcon>
     </PropertyGroup>
 
     <Import Project="../tools/verdite-core/launcher/Launcher.targets" />

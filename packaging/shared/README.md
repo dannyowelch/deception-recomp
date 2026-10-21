@@ -1,13 +1,10 @@
 # Packaging assets
 
-`verdite2.desktop` is the entry the AppImage carries; `package.env` one level up
-names the port to Verdite Core's packaging scripts.
+`deception.desktop` is the entry the AppImage carries; `package.env` one level up
+names the port to Verdite Core's packaging scripts. `verdite2.desktop` is leftover
+from the King's Field packaging and is not what this port ships.
 
-There is no mark here, on purpose. The port's icon is the game's own memory-card
-icon, read off the player's disc by Verdite Core's `CardIcon` (where it is on
-this disc: `patches/CardIconSource.cs`), and a release cannot carry it, so
-nothing shipped has an icon of its own: the executables have no icon resource
-and the AppImage gets a transparent square (appimagetool refuses an AppDir with
-none). Once the game has read the disc, the window, the icon theme and the
-shortcuts wear the card icon — see "The icon comes off the disc" in
-`docs/PACKAGING.md`.
+`deception.png` (256×256) and `deception.ico` (16, 32, 48, 64, 128, 256) are the
+port's icon, made from `Icon.jpg` at the repo root. The `.ico` is the executable's
+icon: `Deception.csproj`, the launcher, and the Windows stub. The `.png` is the
+window icon, and the picture the AppImage puts under the `deception` app id.

@@ -466,24 +466,28 @@ Trimming is off and must stay off: `MonoMod.RuntimeDetour` builds detours at run
 time, `ModCompiler` hands Roslyn the loaded assemblies, and
 `patches/AutoStart.cs` reflects over runtime internals.
 
-The port ships no mark (since 2026-10-11; a green verdite orb until then). See
-"The icon comes off the disc" and `packaging/shared/README.md`.
+The port's icon is `Icon.jpg` at the repo root, shipped as
+`packaging/shared/deception.png` and `deception.ico`. See `packaging/shared/README.md`.
 
-## The icon comes off the disc
+## The icon
 
-The window wears the game's **own memory-card icon** — the teal helm with the two
-red gems that a King's Field save shows in the PlayStation's card browser — read
-out of the player's image at boot by Verdite Core's `CardIcon` (where it is on this
-disc: `patches/CardIconSource.cs`). It is the port's **only** icon. The artifact
-is built in CI with no disc, so nothing baked into an executable, the AppImage or
-the `.desktop` file can be the game's art, which is the same line `generated/` is
-on; so since 2026-10-11 the port ships **no mark at all**, as Verdite3 has since
-2026-10-08. The executables have no icon resource, the AppImage a transparent
-square (core's `build-appimage.sh`, since appimagetool refuses an AppDir with
-none), and until a run has read the disc once there is no icon. Until then the
-fallback was a green verdite orb (`verdite2.png`, `verdite2.ico`), which
-`Program.cs` set first and which also stood as the launcher's, the game's and the
-Windows stub's `ApplicationIcon`, so a shortcut showed it until the game rewrote it.
+The window and the executables wear that picture. `deception.ico` is
+`ApplicationIcon` on `Deception.csproj` and on the launcher, and the Windows
+stub reads the same file when `build-windows.ps1` finds it. `deception.png` is
+copied beside both executables; `Program.cs` sets it as the window icon before
+`Entry.Run`, and the launcher does the same for its own window from
+`<app id>.png`. The AppImage script copies the png into the icon theme under
+`deception`, which is what a Wayland compositor reads (`deception.desktop`
+already says `Icon=deception`). `Program.cs` sets `Runtime.AppId` to that id
+before the window exists.
+
+The memory-card reader below is not installed. `patches/CardIconSource.cs` can
+still find an icon on a disc, and Verdite Core's `CardIcon` would replace the
+window with it, but nothing calls `CardIcon.Install`. A saved `icon.png` in the
+data directory is what the launcher prefers for its own window until the game
+starts and sets `deception.png`.
+
+The notes that follow are the King's Field card icon this tree used to wear.
 
 **Where it is.** 16×16 at 4bpp with a 16-entry BGR555 CLUT, in `CD/COM/FDAT.T` at
 file offset `0x14D210` — the CLUT, then at `0x14D240` the three animation frames

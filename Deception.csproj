@@ -8,6 +8,8 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <AssemblyName>Deception</AssemblyName>
         <RootNamespace>Deception</RootNamespace>
+        <!-- The file icon Explorer shows. The window icon is the same picture, set in Program.cs. -->
+        <ApplicationIcon>packaging\shared\deception.ico</ApplicationIcon>
         <!--
           QuickJit off: every method with no precompiled code is JIT-compiled once,
           fully optimised, and never tiered up. Tier-up recompiles a method, and
@@ -127,6 +129,7 @@
 
     <ItemGroup>
         <None Update="border\*.jpg" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="packaging\shared\deception.png" Link="deception.png" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
 </Project>
