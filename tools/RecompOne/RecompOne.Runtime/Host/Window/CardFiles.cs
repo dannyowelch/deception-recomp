@@ -6,8 +6,8 @@ namespace RecompOne.Runtime.Host.Window;
 
 /// <summary>
 /// System-menu copies of the two memory cards. Backup writes carda.sav and
-/// cardb.sav into backups/ under the working directory. Restore puts a chosen
-/// folder back, after keeping the cards that are in use.
+/// cardb.sav into backups/ under the working directory. Restore opens in that
+/// folder and puts a chosen copy back, after keeping the cards that are in use.
 /// </summary>
 public static class CardFiles
 {
@@ -56,10 +56,7 @@ public static class CardFiles
     {
         try
         {
-            using var dialog = new NativeFileDialog();
-            dialog.SelectFolder();
-            var start = Directory.Exists(BackupRoot) ? BackupRoot : Directory.GetCurrentDirectory();
-            if (dialog.Open(out string? folder, start) != DialogResult.Okay || string.IsNullOrWhiteSpace(folder))
+            if (!PickFolder(out var folder) || string.IsNullOrWhiteSpace(folder))
                 return;
 
             var pieces = new List<Piece>();
@@ -141,6 +138,47 @@ public static class CardFiles
             PendingSkipped = [];
             PendingFolder = "";
         }
+    }
+
+    /// <summary>
+    /// backups/ under the working directory. The launcher has already moved
+    /// into the per-user data folder, so this is that folder's backups/. It is
+    /// created when missing so the picker can open there before the first backup.
+    /// </summary>
+    static string RestoreStart()
+    {
+        var root = Path.GetFullPath(BackupRoot);
+        try
+        {
+            Directory.CreateDirectory(root);
+        }
+        catch (Exception e)
+        {
+            Console.Error.WriteLine($"[Host] backups folder: {e.Message}");
+        }
+
+        if (Directory.Exists(root)) return root;
+        return Path.GetFullPath(Directory.GetCurrentDirectory());
+    }
+
+    static bool PickFolder(out string? folder)
+    {
+        folder = null;
+        var start = RestoreStart();
+        if (OperatingSystem.IsWindows())
+        {
+            switch (WindowsFolderDialog.Pick(start, Localization.T("cards.restore.title"), out folder))
+            {
+                case WindowsFolderDialog.Result.Chosen:
+                    return true;
+                case WindowsFolderDialog.Result.Cancelled:
+                    return false;
+            }
+        }
+
+        using var dialog = new NativeFileDialog();
+        dialog.SelectFolder();
+        return dialog.Open(out folder, start) == DialogResult.Okay && !string.IsNullOrWhiteSpace(folder);
     }
 
     static (string Live, string Name)[] Slots()
