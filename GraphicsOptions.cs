@@ -55,7 +55,7 @@ public static class GraphicsOptions
         var (w, h) = ContentSize();
         Console.WriteLine($"[deception] aniso {GteDepth.Anisotropy}, mipmaps {(GteDepth.Mipmaps ? "on" : "off")}, " +
                           $"frame {(_wide ? "16:9" : "4:3")}, borders {(_wide && !_hide ? "on" : "off")}, " +
-                          $"window {_scale}x ({w}x{h})");
+                          $"window {_scale}x ({w}x{h}), sharp walls {(ConfigManager.Game.HighDetailWalls ? "on" : "off")}");
     }
 
     static void Draw()
@@ -81,6 +81,16 @@ public static class GraphicsOptions
 
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("A mip chain for minified textures. Texture windows skip it.");
+
+        bool sharp = ConfigManager.Game.HighDetailWalls;
+        if (ImGui.Checkbox("Sharp walls and doors", ref sharp))
+        {
+            ConfigManager.Game.HighDetailWalls = sharp;
+            ConfigManager.SaveGame();
+        }
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Keeps the close-up wallpaper and door art past the swap distance. The extra packets use the primitive buffers above 2 MB.");
 
         FillScaleLabels();
         int scale = _scale - 1;

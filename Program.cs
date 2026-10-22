@@ -14,7 +14,10 @@ if (File.Exists(iconPath))
 
 Deception.LegacyData.Migrate();
 Deception.GraphicsOptions.Install();
-var memory = new PSMemory();
+Deception.PrimHeap.Install();
+// 8 MB. The two primitive buffers are parked above the console's 2 MB, and a
+// 2 MB guest would alias those stores back onto the start of RAM.
+var memory = new PSMemory(MemoryMap.DevkitRamSize);
 try
 {
     Entry.Run(memory, args.Length > 0 ? args[0] : null);

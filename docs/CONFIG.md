@@ -31,8 +31,11 @@ The first controller uses `Pad` in menus and `PadWalk` while walking, and the ke
 | `MouseLeft`, `MouseRight`, `MouseMiddle` | `1` (Cross), `2` (Circle), `4` (Triangle). `0` is none |
 | `StickDeadzone` | `0.15` (clamped to 0..0.99 when read) |
 | `StickCurve` | `1` |
+| `HighDetailWalls` | `true` |
 | `ActiveMods` | `[]` |
 | `Keys2`, `Pad2`, `PadAnalog2` | empty second-controller tables |
+
+`HighDetailWalls` keeps the sharp wallpaper and door art past the distance where they would swap to the blocky texture. `false` restores that swap. The two primitive buffers (48000 bytes each, at `0x80087F34`) are parked at `0x80200000` and `0x80400000` so the extra packets stay out of the data that follows the pair. Room loops measure the bytes left before `0x80093AB4` and skip a door or a model when fewer than 5000 or 6500 remain; that end is `0x805F4480` so the same test sees the relocated slots. The checkbox is Display settings, *Sharp walls and doors*. The art stays blocky until that move is in place. Play on 2026-10-22 judged the picture: sharp walls and doors, closed doors drawn, furniture, columns, chandeliers, and traps visible, traps working.
 
 A key field accepts one string or a list of strings. An empty list clears that control. Mouse numbers run through None, Cross, Circle, Square, Triangle, L1, R1, L2, R2, L3, R3, Start, Select, Up, Down, Left, Right.
 
