@@ -326,6 +326,13 @@ public class GameConfig
     public float StickDeadzone { get; set; } = 0.15f;
     /// <summary>Power applied after the deadzone remap. 1 leaves the remap as it is.</summary>
     public float StickCurve { get; set; } = 1f;
+    /// <summary>
+    /// Wallpaper and doors past the sharp distance keep the close-up art.
+    /// False restores the original blocky swap. Subdivision on that path is unchanged.
+    /// The primitive buffers have to be in the RAM above 2 MB first, or the extra
+    /// packets walk out of the 48000-byte pair into the data that follows them.
+    /// </summary>
+    public bool HighDetailWalls { get; set; } = true;
 
     public PadKind KindFor(int port)
     {
